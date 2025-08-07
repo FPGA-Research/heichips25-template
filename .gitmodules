@@ -1,0 +1,3 @@
+[submodule "deps/common_cells"]
+	path = deps/common_cells
+	url = https://github.com/pulp-platform/common_cells.git
