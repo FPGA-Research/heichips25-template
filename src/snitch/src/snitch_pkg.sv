@@ -5,8 +5,6 @@
 /// Snitch Configuration.
 package snitch_pkg;
 
-  import cf_math_pkg::idx_width;
-
   localparam DataWidth                  = 32;
   localparam StrbWidth                  = DataWidth/8;
   localparam int NumFPOutstandingLoads  = 1;
@@ -14,7 +12,7 @@ package snitch_pkg;
   // Use a high number of outstanding loads, if running a latency-throughput analysis
   localparam int NumIntOutstandingLoads = 1;
   localparam RobDepth                   = 1;
-  localparam MetaIdWidth                = `ifdef TARGET_SPATZ idx_width(RobDepth) `else idx_width(NumIntOutstandingLoads) `endif;
+  localparam MetaIdWidth                = (NumOutstandingLoads == 1) ? 1 : $clog2(NumOutstandingLoads);
   // Xpulpimg extension enabled?
 `ifdef XPULPIMG
   localparam bit XPULPIMG_EXTENSION = 1'b1;

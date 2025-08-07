@@ -75,13 +75,8 @@ module snitch
   /// AXI-like handshaking.
   /// Same IDs need to be handled in-order.
   output logic [31:0]   acc_qaddr_o,
-`ifdef TARGET_SPATZ
-  output logic [5:0]    acc_qid_o,
-  input  logic [5:0]    acc_pid_i,
-`else
   output logic [4:0]    acc_qid_o,
   input  logic [4:0]    acc_pid_i,
-`endif
   output logic [31:0]   acc_qdata_op_o,
   output logic [31:0]   acc_qdata_arga_o,
   output logic [31:0]   acc_qdata_argb_o,
@@ -241,12 +236,12 @@ module snitch
   logic [31:0] csr_rvalue;
   logic csr_en;
 
-  typedef struct packed {
-    fpnew_pkg::fmt_mode_t  fmode;
-    fpnew_pkg::roundmode_e frm;
-    fpnew_pkg::status_t    fflags;
-  } fcsr_t;
-  fcsr_t fcsr_d, fcsr_q;
+  // typedef struct packed {
+  //   fpnew_pkg::fmt_mode_t  fmode;
+  //   fpnew_pkg::roundmode_e frm;
+  //   fpnew_pkg::status_t    fflags;
+  // } fcsr_t;
+  // fcsr_t fcsr_d, fcsr_q;
   // Current instruction needs fcsr
   logic read_fcsr;
 
@@ -258,7 +253,7 @@ module snitch
   `FFAR(wfi_q, wfi_d, '0, clk_i, rst_i)
   `FFAR(wake_up_q, wake_up_d, '0, clk_i, rst_i)
   `FFAR(sb_q, sb_d, '0, clk_i, rst_i)
-  `FFAR(fcsr_q, fcsr_d, '0, clk_i, rst_i)
+  // `FFAR(fcsr_q, fcsr_d, '0, clk_i, rst_i)
 
   always_comb begin
     core_events_o = '0;
@@ -321,13 +316,7 @@ module snitch
 
   assign valid_instr = (inst_ready_i & inst_valid_o) & operands_ready & dst_ready;
 
-`ifdef TARGET_SPATZ
-  // the accelerator interface stalled us
-  assign acc_stall = (acc_qvalid_o & ~acc_qready_i) || (read_fcsr && acc_qdata_rsp_i.isfloat);
-  // the LSU Interface didn't accept our request yet
-`else
   assign acc_stall = (acc_qvalid_o & ~acc_qready_i);
-`endif
 
   // Stall the stage if we either didn't get a valid instruction or the LSU/Accelerator is not ready
   always_comb begin
@@ -2485,7 +2474,7 @@ module snitch
     csr_stack_limit_en = 1'b0;
     read_fcsr = 1'b0;
 
-    fcsr_d = fcsr_q;
+    // fcsr_d = fcsr_q;
     // if (FP_EN) begin
     //   fcsr_d.fflags = fcsr_q.fflags | fpu_status_i;
     // end
@@ -2530,37 +2519,6 @@ module snitch
           csr_rvalue = stall_raw_q[31:0];
         end
         `endif
-        `ifdef TARGET_SPATZ
-        // F/D Extension
-        riscv_instr::CSR_FFLAGS: begin
-          if (FP_EN) begin
-            csr_rvalue = {27'b0, fcsr_d.fflags};
-            read_fcsr  = 1'b1;
-            if (!exception && !acc_stall) fcsr_d.fflags = fpnew_pkg::status_t'(alu_result[4:0]);
-          end
-        end
-        riscv_instr::CSR_FRM: begin
-          if (FP_EN) begin
-            csr_rvalue = {29'b0, fcsr_d.frm};
-            read_fcsr  = 1'b1;
-            if (!exception && !acc_stall) fcsr_d.frm = fpnew_pkg::roundmode_e'(alu_result[2:0]);
-          end
-        end
-        riscv_instr::CSR_FMODE: begin
-          if (FP_EN) begin
-            csr_rvalue = {30'b0, fcsr_q.fmode};
-            read_fcsr  = 1'b1;
-            if (!exception && !acc_stall) fcsr_d.fmode = fpnew_pkg::fmt_mode_t'(alu_result[1:0]);
-          end
-        end
-        riscv_instr::CSR_FCSR: begin
-          if (FP_EN) begin
-            csr_rvalue = {22'b0, fcsr_d};
-            read_fcsr  = 1'b1;
-            if (!exception && !acc_stall) fcsr_d = fcsr_t'(alu_result[9:0]);
-          end
-        end
-        `endif
         default: begin
           csr_rvalue = '0;
           csr_dump = 1'b1;
@@ -2570,13 +2528,9 @@ module snitch
   end
 
   // CSR registers
-  `ifdef TARGET_ASIC
-    assign csr_trace_q = '0;
-    assign csr_stack_limit_q = '0;
-  `else
-    `FFLAR(csr_trace_q, alu_result, csr_trace_en, '0, clk_i, rst_i);
-    `FFLAR(csr_stack_limit_q, alu_result, csr_stack_limit_en, 32'hFFFF_FFFF, clk_i, rst_i);
-  `endif
+  assign csr_trace_q = '0;
+  assign csr_stack_limit_q = '0;
+
 
   // pragma translate_off
   always_ff @(posedge clk_i or posedge rst_i) begin
@@ -2778,50 +2732,9 @@ module snitch
     assign data_qid_o[$clog2(snitch_pkg::RobDepth)-1:NumIOLoadBit] = '0;
   end
 
-`ifdef TARGET_SPATZ
-  // Number of memory operations in the accelerator
-  logic [2:0] acc_mem_cnt_q, acc_mem_cnt_d;
-  `FFAR(acc_mem_cnt_q, acc_mem_cnt_d, '0, clk_i, rst_i)
-
-  // Number of store operations in the accelerator
-  logic [2:0] acc_mem_str_cnt_q, acc_mem_str_cnt_d;
-  `FFAR(acc_mem_str_cnt_q, acc_mem_str_cnt_d, '0, clk_i, rst_i)
-
-  assign acc_mem_stall = (is_store && acc_mem_cnt_q != '0) || (is_load && acc_mem_str_cnt_q != 0) || acc_mem_cnt_q == '1;
-
-  always_comb begin
-    acc_mem_cnt_d = acc_mem_cnt_q;
-    acc_mem_str_cnt_d = acc_mem_str_cnt_q;
-
-    if (acc_qdata_rsp_i.loadstore && acc_qready_i && acc_qvalid_o)
-      acc_mem_cnt_d += 1;
-    if (acc_mem_finished_i[0])
-      acc_mem_cnt_d -= 1;
-    if (acc_mem_finished_i[1])
-      acc_mem_cnt_d -= 1;
-
-    if (acc_qdata_rsp_i.loadstore && acc_qready_i && acc_qvalid_o && acc_mem_store)
-      acc_mem_str_cnt_d += 1;
-    if (acc_mem_finished_i[0] && acc_mem_str_finished_i[0])
-      acc_mem_str_cnt_d -= 1;
-    if (acc_mem_finished_i[1] && acc_mem_str_finished_i[1])
-      acc_mem_str_cnt_d -= 1;
-  end
-
-  `ASSERT(MemoryOperationCounterRollover,
-      acc_mem_cnt_q == '0 |=> acc_mem_cnt_q != '1, clk_i, rst_i)
-
-  `ASSERT(MemoryStoreOperationCounterRollover,
-      acc_mem_str_cnt_q == '0 |=> acc_mem_str_cnt_q != '1, clk_i, rst_i)
-
-  // address can be alu_result (i.e. rs1 + iimm/simm) or rs1 (for post-increment load/stores)
-  assign lsu_qaddr = is_postincr ? gpr_rdata[0] : alu_result;
-  assign lsu_qvalid = valid_instr & (is_load | is_store) & ~(ld_addr_misaligned | st_addr_misaligned) & ~acc_mem_stall;
-`else
   // address can be alu_result (i.e. rs1 + iimm/simm) or rs1 (for post-increment load/stores)
   assign lsu_qaddr = lsu_qvalid ? (is_postincr ? gpr_rdata[0] : alu_result) : '0;
   assign lsu_qvalid = valid_instr & (is_load | is_store) & ~(ld_addr_misaligned | st_addr_misaligned);
-`endif
 
   // NOTE(smazzola): write-backs "on rd from non-load or non-acc instructions" and "on rs1 from
   // post-increment instructions" in the same cycle should be mutually exclusive (currently valid
@@ -2919,11 +2832,7 @@ module snitch
       gpr_wdata[1] = ld_result[31:0];
       // external interfaces
       // Snitch and LSU have priority if Spatz is not used
-    `ifdef TARGET_SPATZ
-      lsu_pready = 1'b0;
-    `else
       lsu_pready = 1'b1;
-    `endif
       acc_pready_o = 1'b0;
       retire_acc = 1'b0;
       retire_load = 1'b0;

@@ -8,13 +8,12 @@
 //              It supports out-of-order memory responses via metadata linking with IDs.
 
 module snitch_lsu
-  import cf_math_pkg::idx_width;
 #(
   parameter type tag_t                       = logic [4:0],
   parameter int unsigned NumOutstandingLoads = 1,
   parameter bit NaNBox                       = 0,
   // Dependent parameters. DO NOT CHANGE.
-  localparam int unsigned IdWidth = idx_width(NumOutstandingLoads)
+  localparam int unsigned IdWidth = (NumOutstandingLoads == 1) ? 1 : $clog2(NumOutstandingLoads)
 ) (
   input  logic               clk_i,
   input  logic               rst_ni,
