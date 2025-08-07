@@ -83,7 +83,7 @@ module heichips25_template (
   logic [2:0]  cnt_q, cnt_d;
   logic [3:0]  nibble_out;
 
-  for (unsigned i = 0; i < 4; i++) begin
+  for (genvar i = 0; i < 4; i++) begin
     assign wstrb_extended[2*i]   = data_strb[i];
     assign wstrb_extended[2*i+1] = data_strb[i];
   end

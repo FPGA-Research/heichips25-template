@@ -1,7 +1,18 @@
 # LibreLane configuration file
 
 DESIGN_NAME: heichips25_template
-VERILOG_FILES: dir::../src/*.sv
+VERILOG_FILES: 
+- dir::../src/heichips25_template.sv 
+- dir::../src/snitch/src/riscv_instr.sv
+- dir::../src/snitch/src/snitch.sv
+- dir::../src/snitch/src/snitch_lsu.sv
+- dir::../src/snitch/src/snitch_pkg.sv
+- dir::../src/snitch/src/snitch_regfile_ff.sv
+- dir::../src/deps/common_cells/src/rr_arb_tree.sv
+- dir::../src/deps/common_cells/src/spill_register.sv
+- dir::../src/deps/common_cells/src/spill_register_flushable.sv
+- dir::../src/deps/common_cells/src/lzc.sv
+
 CLOCK_PORT: clk
 CLOCK_PERIOD: 10 # 10ns = 100MHz
 

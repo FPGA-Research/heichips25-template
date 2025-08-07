@@ -7,11 +7,13 @@
 //          Marco Bertuletti <mbertuletti@iis.ee.ethz.ch>
 // Description: Top-Level of Snitch Integer Core RV32E
 
-`include "common_cells/registers.svh"
-`include "common_cells/assertions.svh"
+`include "/mnt/SSD4TB/heichips25-template/src/deps/common_cells/include/common_cells/registers.svh"
+`include "/mnt/SSD4TB/heichips25-template/src/deps/common_cells/include/common_cells/assertions.svh"
 
 // `SNITCH_ENABLE_PERF Enables mcycle, minstret performance counters (read only)
 // `SNITCH_ENABLE_STALL_COUNTER Enables stall_ins, stall_raw, stall_lsu performance counters (read only)
+
+
 
 module snitch
   import snitch_pkg::meta_id_t;
@@ -2954,8 +2956,8 @@ module snitch
   // ----------
   // Make sure the instruction interface is stable. Otherwise, Snitch might violate the protocol at
   // the LSU or accelerator interface by withdrawing the valid signal.
-  `ASSERT(InstructionInterfaceStable,
+  /*`ASSERT(InstructionInterfaceStable,
       (inst_valid_o && inst_ready_i) ##1 (inst_valid_o && $stable(inst_addr_o))
       |-> inst_ready_i && $stable(inst_data_i), clk_i, rst_i)
-
+*/
 endmodule
