@@ -9,11 +9,11 @@ package snitch_pkg;
 
   localparam DataWidth                  = 32;
   localparam StrbWidth                  = DataWidth/8;
-  localparam int NumFPOutstandingLoads  = 4;
-  localparam int AccIdWidth             = `ifdef TARGET_SPATZ 6 `else 5 `endif;
+  localparam int NumFPOutstandingLoads  = 1;
+  localparam int AccIdWidth             = 5;
   // Use a high number of outstanding loads, if running a latency-throughput analysis
-  localparam int NumIntOutstandingLoads = `ifdef TRAFFIC_GEN 2048 `else 8 `endif;
-  localparam RobDepth                   = 32;
+  localparam int NumIntOutstandingLoads = 1;
+  localparam RobDepth                   = 1;
   localparam MetaIdWidth                = `ifdef TARGET_SPATZ idx_width(RobDepth) `else idx_width(NumIntOutstandingLoads) `endif;
   // Xpulpimg extension enabled?
 `ifdef XPULPIMG
@@ -103,15 +103,15 @@ package snitch_pkg;
 
   // FPU
   // Floating-point extensions configuration
-  localparam bit RVF = 1; // Is F extension enabled - MUST BE 1 IF D ENABLED!
+  localparam bit RVF = 0; // Is F extension enabled - MUST BE 1 IF D ENABLED!
   localparam bit RVD = 0; // Is D extension enabled - NOT SUPPORTED IN MEMPOOL
 
   // Transprecision floating-point extensions configuration
-  localparam bit XF16    = 1; // Is half-precision float extension (Xf16) enabled
+  localparam bit XF16    = 0; // Is half-precision float extension (Xf16) enabled
   localparam bit XF16ALT = 0; // Is alt. half-precision float extension (Xf16alt) enabled
-  localparam bit XF8     = ZQUARTERINX; // Is quarter-precision float extension (Xf8) enabled
+  localparam bit XF8     = 0; // Is quarter-precision float extension (Xf8) enabled
   localparam bit XF8ALT  = 0; // Is alt. quarter-precision float extension (Xf8alt) enabled
-  localparam bit XFVEC   = 1; // Is vectorial float SIMD extension (Xfvec) enabled
+  localparam bit XFVEC   = 0; // Is vectorial float SIMD extension (Xfvec) enabled
   // Non-standard extension present
   localparam bit NSX = XF16 | XF16ALT | XF8 | XFVEC;
   // ------------------
@@ -126,13 +126,13 @@ package snitch_pkg;
                     XF8     ? 8 :  // Xf8 ext.
                     0;             // Unused in case of no FP
 
-  localparam fpnew_pkg::fpu_features_t FPU_FEATURES = '{
-    Width:         fpnew_pkg::maximum(FLEN, 32),
-    EnableVectors: XFVEC,
-    EnableNanBox:  1'b0,
-    FpFmtMask:     {RVF, RVD, XF16, XF8, XF16ALT, XF8ALT},
-    IntFmtMask:    {XFVEC && XF8, XFVEC && (XF16 || XF16ALT), 1'b1, 1'b0}
-  };
+  // localparam fpnew_pkg::fpu_features_t FPU_FEATURES = '{
+  //   Width:         fpnew_pkg::maximum(FLEN, 32),
+  //   EnableVectors: XFVEC,
+  //   EnableNanBox:  1'b0,
+  //   FpFmtMask:     {RVF, RVD, XF16, XF8, XF16ALT, XF8ALT},
+  //   IntFmtMask:    {XFVEC && XF8, XFVEC && (XF16 || XF16ALT), 1'b1, 1'b0}
+  // };
 
   // Latencies of FP ops (number of regs)
   localparam int unsigned LAT_COMP_FP32    = 'd1;
@@ -146,53 +146,53 @@ package snitch_pkg;
   localparam int unsigned LAT_CONV         = 'd2;
   localparam int unsigned LAT_SDOTP        = 'd2;
 
-  localparam fpnew_pkg::fpu_implementation_t FPU_IMPLEMENTATION = '{
-    PipeRegs:  '{// FP32, FP64, FP16, FP8, FP16alt
-                 '{ LAT_COMP_FP32,
-                    LAT_COMP_FP64,
-                    LAT_COMP_FP16,
-                    LAT_COMP_FP8,
-                    LAT_COMP_FP16ALT,
-                    LAT_COMP_FP8ALT}, // ADDMUL
-                 '{default: LAT_DIVSQRT}, // DIVSQRT
-                 '{default: LAT_NONCOMP}, // NONCOMP
-                 '{default: LAT_CONV},    // CONV
-                 '{default: LAT_SDOTP}},  // SDOTP
-    UnitTypes: '{'{default: fpnew_pkg::MERGED}, // ADDMUL
-                 '{default: fpnew_pkg::DISABLED}, // DIVSQRT
-                 '{default: fpnew_pkg::PARALLEL}, // NONCOMP
-                 '{default: fpnew_pkg::MERGED},   // CONV
-                 '{default: fpnew_pkg::MERGED}},  // SDOTP
-    PipeConfig: fpnew_pkg::BEFORE
-  };
+  // localparam fpnew_pkg::fpu_implementation_t FPU_IMPLEMENTATION = '{
+  //   PipeRegs:  '{// FP32, FP64, FP16, FP8, FP16alt
+  //                '{ LAT_COMP_FP32,
+  //                   LAT_COMP_FP64,
+  //                   LAT_COMP_FP16,
+  //                   LAT_COMP_FP8,
+  //                   LAT_COMP_FP16ALT,
+  //                   LAT_COMP_FP8ALT}, // ADDMUL
+  //                '{default: LAT_DIVSQRT}, // DIVSQRT
+  //                '{default: LAT_NONCOMP}, // NONCOMP
+  //                '{default: LAT_CONV},    // CONV
+  //                '{default: LAT_SDOTP}},  // SDOTP
+  //   UnitTypes: '{'{default: fpnew_pkg::MERGED}, // ADDMUL
+  //                '{default: fpnew_pkg::DISABLED}, // DIVSQRT
+  //                '{default: fpnew_pkg::PARALLEL}, // NONCOMP
+  //                '{default: fpnew_pkg::MERGED},   // CONV
+  //                '{default: fpnew_pkg::MERGED}},  // SDOTP
+  //   PipeConfig: fpnew_pkg::BEFORE
+  // };
 
   // Tile-shared divsqrt unit implemented as fpnew
-  localparam fpnew_pkg::fpu_implementation_t DIVSQRT_IMPLEMENTATION = '{
-    PipeRegs:  '{// FP32, FP64, FP16, FP8, FP16alt
-                 '{ LAT_COMP_FP32,
-                    LAT_COMP_FP64,
-                    LAT_COMP_FP16,
-                    LAT_COMP_FP8,
-                    LAT_COMP_FP16ALT,
-                    LAT_COMP_FP8ALT}, // ADDMUL
-                 '{default: LAT_DIVSQRT}, // DIVSQRT
-                 '{default: LAT_NONCOMP}, // NONCOMP
-                 '{default: LAT_CONV},    // CONV
-                 '{default: LAT_SDOTP}},  // SDOTP
-    UnitTypes: '{'{default: fpnew_pkg::DISABLED},   // ADDMUL
-                 '{default: fpnew_pkg::MERGED}, // DIVSQRT
-                 '{default: fpnew_pkg::DISABLED},   // NONCOMP
-                 '{default: fpnew_pkg::DISABLED},   // CONV
-                 '{default: fpnew_pkg::DISABLED}},  // SDOTP
-    PipeConfig: fpnew_pkg::BEFORE
-  };
+  // localparam fpnew_pkg::fpu_implementation_t DIVSQRT_IMPLEMENTATION = '{
+  //   PipeRegs:  '{// FP32, FP64, FP16, FP8, FP16alt
+  //                '{ LAT_COMP_FP32,
+  //                   LAT_COMP_FP64,
+  //                   LAT_COMP_FP16,
+  //                   LAT_COMP_FP8,
+  //                   LAT_COMP_FP16ALT,
+  //                   LAT_COMP_FP8ALT}, // ADDMUL
+  //                '{default: LAT_DIVSQRT}, // DIVSQRT
+  //                '{default: LAT_NONCOMP}, // NONCOMP
+  //                '{default: LAT_CONV},    // CONV
+  //                '{default: LAT_SDOTP}},  // SDOTP
+  //   UnitTypes: '{'{default: fpnew_pkg::DISABLED},   // ADDMUL
+  //                '{default: fpnew_pkg::MERGED}, // DIVSQRT
+  //                '{default: fpnew_pkg::DISABLED},   // NONCOMP
+  //                '{default: fpnew_pkg::DISABLED},   // CONV
+  //                '{default: fpnew_pkg::DISABLED}},  // SDOTP
+  //   PipeConfig: fpnew_pkg::BEFORE
+  // };
 
   // Enable stocastic rounding
-  localparam fpnew_pkg::rsr_impl_t FPU_RSR = '{
-    EnableRSR:            1'b0,
-    RsrPrecision:           12,
-    LfsrInternalPrecision:  32
-  };
+  // localparam fpnew_pkg::rsr_impl_t FPU_RSR = '{
+  //   EnableRSR:            1'b0,
+  //   RsrPrecision:           12,
+  //   LfsrInternalPrecision:  32
+  // };
 
   // Amount of address bit which should be used for accesses from the SoC side.
   // This effectively determines the Address Space of a Snitch Cluster.

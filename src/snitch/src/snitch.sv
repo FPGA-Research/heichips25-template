@@ -38,7 +38,7 @@ module snitch
   parameter int    RegNrWritePorts = 2,   // Implement one or two write ports into the register file
   parameter type         acc_issue_rsp_t = logic,
   // Dependant parameters.
-  localparam bit FP_EN             = RVF || RVD  // Enable FP in general,
+  localparam bit FP_EN             = 0  // Enable FP in general,
 ) (
   input  logic          clk_i,
   input  logic          rst_i,
@@ -114,9 +114,9 @@ module snitch
   output logic          data_pready_o,
   input  logic          wake_up_sync_i, // synchronous wake-up interrupt
   // FPU **un-timed** Side-channel
-  output fpnew_pkg::roundmode_e    fpu_rnd_mode_o,
-  output fpnew_pkg::fmt_mode_t     fpu_fmt_mode_o,
-  input  fpnew_pkg::status_t       fpu_status_i,
+  // output fpnew_pkg::roundmode_e    fpu_rnd_mode_o,
+  // output fpnew_pkg::fmt_mode_t     fpu_fmt_mode_o,
+  // input  fpnew_pkg::status_t       fpu_status_i,
   // Core event strobes
   output snitch_pkg::core_events_t core_events_o
 );
@@ -250,8 +250,8 @@ module snitch
   // Current instruction needs fcsr
   logic read_fcsr;
 
-  assign fpu_rnd_mode_o = fcsr_q.frm;
-  assign fpu_fmt_mode_o = fcsr_q.fmode;
+  // assign fpu_rnd_mode_o = fcsr_q.frm;
+  // assign fpu_fmt_mode_o = fcsr_q.fmode;
 
   // Registers
   `FFAR(pc_q, pc_d, BootAddr, clk_i, rst_i)
@@ -2486,9 +2486,9 @@ module snitch
     read_fcsr = 1'b0;
 
     fcsr_d = fcsr_q;
-    if (FP_EN) begin
-      fcsr_d.fflags = fcsr_q.fflags | fpu_status_i;
-    end
+    // if (FP_EN) begin
+    //   fcsr_d.fflags = fcsr_q.fflags | fpu_status_i;
+    // end
 
     // TODO(zarubaf): Needs some more input handling, like illegal instruction exceptions.
     // Right now we skip this due to simplicity.

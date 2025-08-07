@@ -48,8 +48,8 @@ module heichips25_template (
   snitch #(
     .BootAddr ( BootAddr ),
     .MTVEC    ( MTVEC    ),
-    .RVE      ( RVE      ),
-    .RVM      ( RVM      )
+    .RVE      ( 1'b0     ),
+    .RVM      ( 1'b1     )
   ) i_snitch (
     .clk_i            ( clk           ),
     .rst_ni           ( rst_n         ),
@@ -85,8 +85,8 @@ module heichips25_template (
     .data_pvalid_i    ( data_pvalid   ),
     .data_pready_o    ( data_pready   ),
     .wake_up_sync_i   ( wake_up_sync  ),
-    .fpu_rnd_mode_o   (               ),
-    .fpu_status_i     ( '0            ),
+    // .fpu_rnd_mode_o   (               ),
+    // .fpu_status_i     ( '0            ),
     .core_events_o    (               )
   );
 
