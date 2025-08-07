@@ -1,3 +1,6 @@
 [submodule "deps/common_cells"]
 	path = deps/common_cells
 	url = https://github.com/pulp-platform/common_cells.git
+[submodule "src/deps/common_cells"]
+	path = src/deps/common_cells
+	url = git@github.com:pulp-platform/common_cells.git

@@ -1,7 +1,7 @@
 # LibreLane configuration file
 
 DESIGN_NAME: heichips25_template
-VERILOG_FILES: dir::../src/heichips25_template.sv
+VERILOG_FILES: dir::../src/*.sv
 CLOCK_PORT: clk
 CLOCK_PERIOD: 10 # 10ns = 100MHz
 

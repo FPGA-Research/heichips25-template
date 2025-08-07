@@ -16,34 +16,16 @@ module heichips25_template (
   input  wire       rst_n     // reset_n - low to reset
 );
 
-  // List all unused inputs to prevent warnings
-  wire _unused = &{ena, ui_in[7:1], uio_in[7:0]};
-
-  logic [7:0] count;
-
-  always_ff @(posedge clk) begin
-    if (!rst_n) begin
-      count <= '0;
-    end else begin
-      if (ui_in[0]) begin
-        count <= count + 1;
-      end
-    end
-  end
-
   // Instruction interface (should be muxed with data)
   logic [31:0] inst_addr, inst_data;
   logic inst_valid, inst_ready;
 
   // Data interface (q means request, p means response)
   logic [31:0] data_qaddr, data_qdata, data_pdata;
-  // byte-write enable
   logic [3 :0] data_strb;
   logic data_qvalid, data_qready, data_pvalid, data_pready;
 
-
-  // TODO (Diyou): Assign correct BootAddr
-  // TODO (Diyou): Which extension to enable/disable?
+  localparam int unsigned BootAddr = 32'h0000_0000;
 
   snitch #(
     .BootAddr ( BootAddr ),
@@ -85,19 +67,134 @@ module heichips25_template (
     .data_pvalid_i    ( data_pvalid   ),
     .data_pready_o    ( data_pready   ),
     .wake_up_sync_i   ( wake_up_sync  ),
-    // .fpu_rnd_mode_o   (               ),
-    // .fpu_status_i     ( '0            ),
     .core_events_o    (               )
   );
 
-  // TODO1: Merge the request and response data channel into a single channel
+  // === TODO3: FIFO to serialize 32-bit to 4-bit ===
 
-  // TODO2: Add muxing between instruction and data ports
+  typedef enum logic {
+    IDLE, SEND
+  } fsm_state_e;
 
-  // TODO3: Add the FIFO to breakdown the 32b access to 4b
-    
-    assign uo_out  = count;
-    assign uio_out = count;
-    assign uio_oe  = '1;
+  fsm_state_e state, next_state;
+  logic [31:0] shift_reg_q, shift_reg_d;
+  // write strb
+  logic [7:0]  strb_reg_q, strb_reg_d, wstrb_extended;
+  logic [2:0]  cnt_q, cnt_d;
+  logic [3:0]  nibble_out;
+
+  for (unsigned i = 0; i < 4; i++) begin
+    assign wstrb_extended[2*i]   = data_strb[i];
+    assign wstrb_extended[2*i+1] = data_strb[i];
+  end
+
+  // TODO: Assign to correct output signals
+  logic [3:0]  req_data_out;
+  logic        req_data_valid, req_data_ready;
+  logic [7:0]  req_addr_out;
+
+  logic [31:0] rsp_data_d, rsp_data_q;
+  logic        rsp_data_valid, rsp_data_ready;
+
+  logic [31:0] addr_muxed;
+  logic        strb_out;
+
+  assign uio_out[3:0] = nibble_out;
+  assign uio_out[7:4] = addr_muxed[8 :5];
+  assign uo_out [7:4] = addr_muxed[12:9];
+  // TODO: assgin the correct write signal from either insn or data
+  assign uo_out [3]   = data_write;
+  assign uo_out [2]   = strb_out;
+  assign uo_out [1]   = ready_o;
+  assign uo_out [0]   = rsp_data_ready;
+
+  assign rsp_data_d     = ui_in[7:4];
+  assign rsp_data_valid = ui_in[1];
+  assign req_data_ready = ui_in[0];
+
+  always_comb begin : req_logic
+    // Defaults
+    next_state  = state;
+    shift_reg_d = shift_reg_q;
+    strb_reg_d  = strb_reg_q;
+    cnt_d       = cnt_q;
+    nibble_out  = 4'd0;
+    // We do not ack the request by default
+    data_qready = 1'b0;
+
+    // TODO: assign it correctly from MUX, temporary connection for synthesis
+    req_addr_out = data_qaddr[7:0] | inst_addr[7:0];
+
+    strb_out     = 1'b0;
+
+    if (data_write) begin
+      case (state)
+        IDLE: begin
+          // TODO: assign it correctly from MUX, temporary connection for synthesis
+          if (data_qvalid | inst_valid) begin
+            // Upon a valid transfer, save the data into reg
+            // TODO: assign it correctly from MUX, temporary connection for synthesis
+            shift_reg_d = ((data_qdata|inst_data) >> 4);
+            strb_reg_d  = (wstrb_extended >> 1);
+            // Send out the first piece of data
+            nibble_out  = data_qdata[3:0];
+            strb_out    = wstrb_extended[0];
+
+            req_data_valid = 1'b1;
+
+            if (req_data_ready) begin
+              // The request has been accepted, add counter and move states
+              // Count one since we already send one piece out
+              cnt_d      = 1'b1;
+              next_state = SEND;
+            end
+          end
+        end
+
+        SEND: begin
+          nibble_out      = shift_reg_q[3:0];
+          req_data_valid  = 1'b1;
+          strb_out        = strb_reg_q[0];
+
+          // The request is accepted, move to next 4b data or finish
+          if (req_data_ready) begin
+            // Ackowledge the request
+            data_qready       = 1'b1;
+
+            // Last count, clear and switch back to idle
+            if (cnt_q == 3'd7) begin
+              next_state      = IDLE;
+              cnt_d           = 1'b0;
+              shift_reg_d     = '0;
+              strb_reg_d      = '0;
+            end else begin
+              cnt_d           = cnt_q + 1;
+              shift_reg_d     = (shift_reg_q >> 4);
+              strb_reg_d      = (strb_reg_q  >> 1);
+            end
+          end
+        end
+      endcase
+    end else begin
+      req_data_valid = 1'b1;
+      if (req_data_ready) begin
+        data_qready  = 1'b1;
+      end
+    end
+  end
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      state        <= IDLE;
+      shift_reg_q  <= 32'd0;
+      cnt_q        <= 3'd0;
+      strb_reg_q   <= '0;
+    end else begin
+      state        <= next_state;
+      shift_reg_q  <= shift_reg_d;
+      cnt_q        <= cnt_d;
+      strb_reg_q   <= strb_reg_d;
+    end
+  end
 
 endmodule
