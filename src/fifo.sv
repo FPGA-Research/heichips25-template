@@ -90,50 +90,89 @@ module heichips25_template (
 
   // === TODO3: FIFO to serialize 32-bit to 4-bit ===
 
-  typedef enum logic [1:0] {
-    IDLE, LOAD, SEND
+  typedef enum logic {
+    IDLE, SEND
   } fsm_state_e;
 
   fsm_state_e state, next_state;
   logic [31:0] shift_reg_q, shift_reg_d;
+  // write strb
+  logic [7:0]  strb_reg_q, strb_reg_d, wstrb_extended;
   logic [2:0]  cnt_q, cnt_d;
   logic [3:0]  nibble_out;
 
-  always_comb begin
+  for (unsigned i = 0; i < 4; i++) begin
+    assign wstrb_extended[2*i]   = data_strb[i];
+    assign wstrb_extended[2*i+1] = data_strb[i];
+  end
+
+  // TODO: Assign to correct output signals
+  logic [3:0]  req_data_out;
+  logic        req_data_valid, req_data_ready;
+  logic [7:0]  req_addr_out;
+
+  always_comb begin : req_logic
     // Defaults
     next_state  = state;
     shift_reg_d = shift_reg_q;
+    strb_reg_d  = strb_reg_q;
     cnt_d       = cnt_q;
     nibble_out  = 4'd0;
+    // We do not ack the request by default
+    data_qready = 1'b0;
 
-    case (state)
-      IDLE: begin
-        if (data_qvalid) begin
-          next_state = LOAD;
+    req_addr_out = data_qaddr;
+
+    if (data_write) begin
+      case (state)
+        IDLE: begin
+          if (data_qvalid) begin
+            // Upon a valid transfer, save the data into reg
+            shift_reg_d = (data_qdata >> 4);
+            strb_reg_d  = (wstrb_extended >> 1);
+            // Send out the first piece of data
+            nibble_out  = data_qdata[3:0];
+
+            req_data_valid = 1'b1;
+
+            if (req_data_ready) begin
+              // The request has been accepted, add counter and move states
+              // Count one since we already send one piece out
+              cnt_d      = 1'b1;
+              next_state = SEND;
+            end
+          end
         end
-      end
 
-      LOAD: begin
-        shift_reg_d = data_qdata;
-        cnt_d       = 3'd0;
-        next_state  = SEND;
-      end
+        SEND: begin
+          nibble_out      = shift_reg_q[3:0];
+          req_data_valid  = 1'b1;
 
-      SEND: begin
-        nibble_out  = shift_reg_q[3:0];
-        shift_reg_d = shift_reg_q >> 4;
-        cnt_d       = cnt_q + 1;
-        data_pready = 1'b0;
-        data_pvalid = 1'b1;
+          // The request is accepted, move to next 4b data or finish
+          if (req_data_ready) begin
+            // Ackowledge the request
+            data_qready       = 1'b1;
 
-
-        if (cnt_q == 3'd7)
-          next_state = IDLE;
-          data_pready = 1'b1;
-          data_pvalid = 1'b0;
+            // Last count, clear and switch back to idle
+            if (cnt_q == 3'd7) begin
+              next_state      = IDLE;
+              cnt_d           = 1'b0;
+              shift_reg_d     = '0;
+              strb_reg_d      = '0;
+            end else begin
+              cnt_d           = cnt_q + 1;
+              shift_reg_d     = (shift_reg_q >> 4);
+              strb_reg_d      = (strb_reg_q  >> 1);
+            end
+          end
         end
-      end
-    endcase
+      endcase
+    end else begin
+      req_data_valid = 1'b1;
+      if (req_data_ready) begin
+        data_qready  = 1'b1;        
+      end      
+    end
   end
 
   always_ff @(posedge clk or negedge rst_n) begin
