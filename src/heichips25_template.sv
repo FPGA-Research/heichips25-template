@@ -94,10 +94,14 @@ module heichips25_template (
   
   //Test--------------------------------------------------
   for (genvar i = 0; i < 4; i++) begin
-    assign data_pdata[8*i]   = ui_in[i];
-    assign data_pdata[8*i+7] = ui_in[i];
+    assign data_pdata[8*i+7 : 8*i]   = ui_in;
+    assign inst_data [8*i+7 : 8*i]   = ui_in;
   end
-  
+
+  assign inst_valid = uio_in[0];
+  assign data_pvalid = uio_in[1];
+
+
   assign inst_ready = 1'b1;
 
   // TODO: Assign to correct output signals
@@ -146,7 +150,7 @@ module heichips25_template (
           if (data_qvalid | inst_valid) begin
             // Upon a valid transfer, save the data into reg
             // TODO: assign it correctly from MUX, temporary connection for synthesis
-            shift_reg_d = ((data_qdata|inst_data) >> 4);
+            shift_reg_d = ((data_qdata) >> 4);
             strb_reg_d  = (wstrb_extended >> 1);
             // Send out the first piece of data
             nibble_out  = data_qdata[3:0];
