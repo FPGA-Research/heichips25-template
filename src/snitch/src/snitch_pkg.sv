@@ -4,7 +4,8 @@
 
 /// Snitch Configuration.
 package snitch_pkg;
-
+  import cf_math_pkg::idx_width;
+  
   localparam DataWidth                  = 32;
   localparam StrbWidth                  = DataWidth/8;
   localparam int NumFPOutstandingLoads  = 1;
@@ -12,18 +13,18 @@ package snitch_pkg;
   // Use a high number of outstanding loads, if running a latency-throughput analysis
   localparam int NumIntOutstandingLoads = 1;
   localparam RobDepth                   = 1;
-  localparam MetaIdWidth                = (NumOutstandingLoads == 1) ? 1 : $clog2(NumOutstandingLoads);
+  localparam MetaIdWidth                = idx_width(NumIntOutstandingLoads);
   // Xpulpimg extension enabled?
 `ifdef XPULPIMG
   localparam bit XPULPIMG_EXTENSION = 1'b1;
 `endif
-  localparam bit XPULPIMG = `ifdef XPULPIMG `XPULPIMG `else 1'bX `endif;
+  localparam bit XPULPIMG = `ifdef XPULPIMG `XPULPIMG `else 1'b0 `endif;
   // ZFINX extension enabled?
-  localparam bit ZFINX = `ifdef ZFINX `ZFINX `else 1'bX `endif;
+  localparam bit ZFINX = `ifdef ZFINX `ZFINX `else 1'b0 `endif;
   // ZQUARTERINX extension enabled?
-  localparam bit ZQUARTERINX = `ifdef ZQUARTERINX `ZQUARTERINX `else 1'bX `endif;
+  localparam bit ZQUARTERINX = `ifdef ZQUARTERINX `ZQUARTERINX `else 1'b0 `endif;
   // XDivSqrt extension enabled?
-  localparam bit XDIVSQRT = `ifdef XDIVSQRT `XDIVSQRT `else 1'bX `endif;
+  localparam bit XDIVSQRT = `ifdef XDIVSQRT `XDIVSQRT `else 1'b0 `endif;
 
 
   typedef logic [31:0]               addr_t;

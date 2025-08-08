@@ -16,7 +16,6 @@
 
 
 module snitch
-  import snitch_pkg::meta_id_t;
 #(
   parameter logic [31:0] BootAddr  = 32'h0000_1000,
   parameter logic [31:0] MTVEC     = BootAddr, // Exception Base Address (see privileged spec 3.1.7)
@@ -38,7 +37,7 @@ module snitch
   /// Enable div/sqrt unit (buggy - use with caution)
   parameter bit          XDivSqrt  = 0,
   parameter int    RegNrWritePorts = 2,   // Implement one or two write ports into the register file
-  parameter type         acc_issue_rsp_t = logic,
+  //parameter type         acc_issue_rsp_t = logic,
   // Dependant parameters.
   localparam bit FP_EN             = 0  // Enable FP in general,
 ) (
@@ -69,7 +68,7 @@ module snitch
   input  logic          acc_perror_i,
   input  logic          acc_pvalid_i,
   output logic          acc_pready_o,
-  input  acc_issue_rsp_t      acc_qdata_rsp_i,
+  input  logic          acc_qdata_rsp_i,
   input  logic [1:0]    acc_mem_finished_i,
   input  logic [1:0]    acc_mem_str_finished_i,
   /// TCDM Data Interface
@@ -80,21 +79,20 @@ module snitch
   output logic [3:0]    data_qamo_o,
   output logic [31:0]   data_qdata_o,
   output logic [3:0]    data_qstrb_o,
-  output meta_id_t      data_qid_o,
+  output logic [0:0]    data_qid_o,
   output logic          data_qvalid_o,
   input  logic          data_qready_i,
   input  logic [31:0]   data_pdata_i,
   input  logic          data_perror_i,
-  input  meta_id_t      data_pid_i,
+  input  logic  [0:0]   data_pid_i,
   input  logic          data_pvalid_i,
   output logic          data_pready_o,
-  input  logic          wake_up_sync_i, // synchronous wake-up interrupt
+  input  logic          wake_up_sync_i // synchronous wake-up interrupt
   // FPU **un-timed** Side-channel
   // output fpnew_pkg::roundmode_e    fpu_rnd_mode_o,
   // output fpnew_pkg::fmt_mode_t     fpu_fmt_mode_o,
   // input  fpnew_pkg::status_t       fpu_status_i,
   // Core event strobes
-  output snitch_pkg::core_events_t core_events_o
 );
 
   localparam int RegWidth = RVE ? 4 : 5;
@@ -222,11 +220,6 @@ module snitch
   `FFAR(wfi_q, wfi_d, '0, clk_i, rst_i)
   `FFAR(wake_up_q, wake_up_d, '0, clk_i, rst_i)
   `FFAR(sb_q, sb_d, '0, clk_i, rst_i)
-
-  always_comb begin
-    core_events_o = '0;
-    core_events_o.retired_insts = ~stall;
-  end
 
   // accelerator offloading interface
   // register int destination in scoreboard
@@ -859,17 +852,6 @@ module snitch
 
   assign exception = illegal_inst | ld_addr_misaligned | st_addr_misaligned;
 
-  // pragma translate_off
-  always_ff @(posedge clk_i or posedge rst_i) begin
-    if (!rst_i && illegal_inst && inst_valid_o && inst_ready_i) begin
-      $display("[Illegal Instruction Core %0d] PC: %h Data: %h", hart_id_i, inst_addr_o, inst_data_i);
-    end
-    if (!rst_i && wake_up_sync_i && &wake_up_q) begin
-      $display("[Missed wake-up Core %0d] Cycle: %d, Time: %t", hart_id_i, cycle_q, $time);
-    end
-  end
-  // pragma translate_on
-
   // CSR logic
   logic csr_dump;
   logic csr_trace_en, csr_stack_limit_en;
@@ -930,6 +912,7 @@ module snitch
     .ADDR_WIDTH     ( RegWidth        )
   ) i_snitch_regfile (
     .clk_i,
+    .rst_ni (!rst_i),
     .raddr_i   ( gpr_raddr ),
     .rdata_o   ( gpr_rdata ),
     .waddr_i   ( gpr_waddr ),
@@ -1067,14 +1050,14 @@ module snitch
   assign lsu_qtag = (lsu_qvalid && (!is_store || ls_amo != AMONone)) ? rd : '0;
   // Send the data if it is a write or an AMO
   assign lsu_qdata = (lsu_qvalid && (is_store || ls_amo != AMONone)) ? gpr_rdata[1] : '0;
-  localparam int unsigned NumIOLoadBit = $clog2(snitch_pkg::NumIntOutstandingLoads);
+  localparam int unsigned NumIOLoadBit = 1;
 
   snitch_lsu #(
     .tag_t               ( logic[RegWidth-1:0]                ),
     .NumOutstandingLoads ( snitch_pkg::NumIntOutstandingLoads )
   ) i_snitch_lsu (
     .clk_i                                ,
-    .rst_i                                ,
+    .rst_ni       ( !rst_i                ),
     .lsu_qtag_i   ( rd                    ),
     .lsu_qwrite_i ( is_store              ),
     .lsu_qsigned_i( is_signed             ),

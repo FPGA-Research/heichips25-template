@@ -23,18 +23,21 @@ module heichips25_template (
   // Data interface (q means request, p means response)
   logic [31:0] data_qaddr, data_qdata, data_pdata;
   logic [3 :0] data_strb;
+  logic data_write;
   logic data_qvalid, data_qready, data_pvalid, data_pready;
+
+  logic wake_up_sync;
 
   localparam int unsigned BootAddr = 32'h0000_0000;
 
   snitch #(
     .BootAddr ( BootAddr ),
-    .MTVEC    ( MTVEC    ),
+    .MTVEC    ( BootAddr ),
     .RVE      ( 1'b0     ),
     .RVM      ( 1'b1     )
   ) i_snitch (
     .clk_i            ( clk           ),
-    .rst_ni           ( rst_n         ),
+    .rst_i            ( !rst_n        ),
     .hart_id_i        ( '0            ),
     .inst_addr_o      ( inst_addr     ),
     .inst_data_i      ( inst_data     ),
@@ -55,10 +58,10 @@ module heichips25_template (
     .acc_pready_o     (               ),
     .data_qaddr_o     ( data_qaddr    ),
     .data_qwrite_o    ( data_write    ),
-    .data_qamo_o      ( '0            ),
+    .data_qamo_o      (               ),
     .data_qdata_o     ( data_qdata    ),
     .data_qstrb_o     ( data_strb     ),
-    .data_qid_o       ( '0            ),
+    .data_qid_o       (               ),
     .data_qvalid_o    ( data_qvalid   ),
     .data_qready_i    ( data_qready   ),
     .data_pdata_i     ( data_pdata    ),
@@ -66,11 +69,11 @@ module heichips25_template (
     .data_pid_i       ( '0            ),
     .data_pvalid_i    ( data_pvalid   ),
     .data_pready_o    ( data_pready   ),
-    .wake_up_sync_i   ( wake_up_sync  ),
-    .core_events_o    (               )
+    .wake_up_sync_i   ( wake_up_sync  )
   );
 
   // === TODO3: FIFO to serialize 32-bit to 4-bit ===
+  
 
   typedef enum logic {
     IDLE, SEND
@@ -87,6 +90,15 @@ module heichips25_template (
     assign wstrb_extended[2*i]   = data_strb[i];
     assign wstrb_extended[2*i+1] = data_strb[i];
   end
+  
+  
+  //Test--------------------------------------------------
+  for (genvar i = 0; i < 4; i++) begin
+    assign data_pdata[8*i]   = ui_in[i];
+    assign data_pdata[8*i+7] = ui_in[i];
+  end
+  
+  assign inst_ready = 1'b1;
 
   // TODO: Assign to correct output signals
   logic [3:0]  req_data_out;
@@ -105,7 +117,7 @@ module heichips25_template (
   // TODO: assgin the correct write signal from either insn or data
   assign uo_out [3]   = data_write;
   assign uo_out [2]   = strb_out;
-  assign uo_out [1]   = ready_o;
+  assign uo_out [1]   = req_data_valid;
   assign uo_out [0]   = rsp_data_ready;
 
   assign rsp_data_d     = ui_in[7:4];

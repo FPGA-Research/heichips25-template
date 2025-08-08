@@ -19,8 +19,8 @@ module snitch_lsu
   input  logic               rst_ni,
   // request channel
   input  tag_t               lsu_qtag_i,
-  input  logic               lsu_qwrite,
-  input  logic               lsu_qsigned,
+  input  logic               lsu_qwrite_i,
+  input  logic               lsu_qsigned_i,
   input  logic [31:0]        lsu_qaddr_i,
   input  logic [31:0]        lsu_qdata_i,
   input  logic [1:0]         lsu_qsize_i,
@@ -106,9 +106,9 @@ module snitch_lsu
   end
 
   assign req_metadata = '{
-    write:    lsu_qwrite,
+    write:    lsu_qwrite_i,
     tag:      lsu_qtag_i,
-    sign_ext: lsu_qsigned,
+    sign_ext: lsu_qsigned_i,
     offset:   lsu_qaddr_i[1:0],
     size:     lsu_qsize_i
   };
@@ -148,7 +148,7 @@ module snitch_lsu
   // also check that we can actually store the necessary information to process
   // it in the upcoming cycle(s).
   assign data_qvalid_o = lsu_qvalid_i && (!id_table_full || handshake_pending_q);
-  assign data_qwrite_o = lsu_qwrite;
+  assign data_qwrite_o = lsu_qwrite_i;
   assign data_qaddr_o  = {lsu_qaddr_i[31:2], 2'b0};
   assign data_qamo_o   = lsu_qamo_i;
   assign data_qid_o    = handshake_pending_q ? req_id_q : req_id;

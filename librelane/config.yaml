@@ -8,20 +8,22 @@ VERILOG_FILES:
 - dir::../src/snitch/src/snitch_lsu.sv
 - dir::../src/snitch/src/snitch_pkg.sv
 - dir::../src/snitch/src/snitch_regfile_ff.sv
-- dir::../src/deps/common_cells/src/rr_arb_tree.sv
-- dir::../src/deps/common_cells/src/spill_register.sv
-- dir::../src/deps/common_cells/src/spill_register_flushable.sv
-- dir::../src/deps/common_cells/src/lzc.sv
+- dir::../src/cf_math_pkg.sv
+- dir::../src/rr_arb_tree.sv
+- dir::../src/spill_register.sv
+- dir::../src/spill_register_flushable.sv
+- dir::../src/lzc.sv
 
 CLOCK_PORT: clk
 CLOCK_PERIOD: 10 # 10ns = 100MHz
-
+USE_SLANG: true
 # Reduce wasted space
 TOP_MARGIN_MULT: 1
 BOTTOM_MARGIN_MULT: 1
 LEFT_MARGIN_MULT: 6
 RIGHT_MARGIN_MULT: 6
-
+ERROR_ON_SYNTH_CHECKS: false
+ERROR_ON_DISCONNECTED_PINS: false
 # Absolute die size
 FP_SIZING: absolute
 
