@@ -1,0 +1,33 @@
+# Copyright 2020 ETH Zurich and University of Bologna.
+# Solderpad Hardware License, Version 0.51, see LICENSE for details.
+# SPDX-License-Identifier: SHL-0.51
+
+package:
+  name: heichips25
+  authors: [ "Diyou Shen <dishen@iis.ee.ethz.ch>" ]
+
+sources:
+    files:
+    # dependency
+    - src/cf_math_pkg.sv
+    - src/fifo_v3.sv
+    - src/lzc.sv
+    - src/rr_arb_tree.sv
+    - src/spill_register_flushable.sv
+    - src/spill_register.sv
+    # packages
+    - src/riscv_instr.sv
+    - src/snitch_pkg.sv
+    # rest of RTL
+    - src/snitch_regfile_ff.sv
+    - src/snitch_lsu.sv
+    - src/snitch.sv
+    # top level
+    - src/heichips25_snitch_wrapper.sv
+
+    - target: simulation
+      files:
+      - tb/snitch_vip.sv
+      - tb/testbench.sv
+
+

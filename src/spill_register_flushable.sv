@@ -11,8 +11,6 @@
 //
 // Fabian Schuiki <fschuiki@iis.ee.ethz.ch>
 
-`include "/mnt/SSD4TB/heichips25-template/src/deps/common_cells/include/common_cells/assertions.svh"
-
 /// A register with handshakes that completely cuts any combinational paths
 /// between the input and output. This spill register can be flushed.
 module spill_register_flushable #(

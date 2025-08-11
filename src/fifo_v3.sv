@@ -10,8 +10,6 @@
 
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
-`include "common_cells/assertions.svh"
-
 module fifo_v3 #(
     parameter bit          FALL_THROUGH = 1'b0, // fifo is in fall-through mode
     parameter int unsigned DATA_WIDTH   = 32,   // default data width if the fifo is of type logic
@@ -138,15 +136,5 @@ module fifo_v3 #(
             mem_q <= mem_n;
         end
     end
-
-`ifndef COMMON_CELLS_ASSERTS_OFF
-    `ASSERT_INIT(depth_0, DEPTH > 0, "DEPTH must be greater than 0.")
-
-    `ASSERT(full_write, full_o |-> ~push_i, clk_i, !rst_ni,
-            "Trying to push new data although the FIFO is full.")
-
-    `ASSERT(empty_read, empty_o |-> ~pop_i, clk_i, !rst_ni,
-            "Trying to pop data although the FIFO is empty.")
-`endif
 
 endmodule // fifo_v3

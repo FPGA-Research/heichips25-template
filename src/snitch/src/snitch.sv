@@ -7,8 +7,7 @@
 //          Marco Bertuletti <mbertuletti@iis.ee.ethz.ch>
 // Description: Top-Level of Snitch Integer Core RV32E
 
-`include "/mnt/SSD4TB/heichips25-template/src/deps/common_cells/include/common_cells/registers.svh"
-`include "/mnt/SSD4TB/heichips25-template/src/deps/common_cells/include/common_cells/assertions.svh"
+`include "./src/registers.svh"
 
 // `SNITCH_ENABLE_PERF Enables mcycle, minstret performance counters (read only)
 // `SNITCH_ENABLE_STALL_COUNTER Enables stall_ins, stall_raw, stall_lsu performance counters (read only)
@@ -68,9 +67,9 @@ module snitch
   input  logic          acc_perror_i,
   input  logic          acc_pvalid_i,
   output logic          acc_pready_o,
-  input  logic          acc_qdata_rsp_i,
-  input  logic [1:0]    acc_mem_finished_i,
-  input  logic [1:0]    acc_mem_str_finished_i,
+  // input  logic          acc_qdata_rsp_i,
+  // input  logic [1:0]    acc_mem_finished_i,
+  // input  logic [1:0]    acc_mem_str_finished_i,
   /// TCDM Data Interface
   /// Write transactions do not return data on the `P Channel`
   /// Transactions need to be handled strictly in-order.
