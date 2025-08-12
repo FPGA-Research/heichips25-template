@@ -34,6 +34,8 @@ module snitch_vip
 
   end
 
+  assign req_ready_o = 1'b1;
+
   // always_comb begin : data_write
 
   //   if (req_valid_i & req_write_i) begin

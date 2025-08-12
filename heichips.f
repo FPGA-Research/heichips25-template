@@ -18,6 +18,7 @@
 
 +define+TARGET_SIMULATION
 +define+TARGET_VSIM
+/scratch2/diyou/heichips/asma-v2/heichips25-template/tb/snitch_fpga_dw_converter.sv
 /scratch2/diyou/heichips/asma-v2/heichips25-template/tb/snitch_vip.sv
 /scratch2/diyou/heichips/asma-v2/heichips25-template/tb/testbench.sv
 

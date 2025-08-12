@@ -34,6 +34,7 @@ module snitch_fpga_dw_converter
   input  logic                  asic_req_valid_i,
   output logic                  asic_req_ready_o,
   output logic [   AsicDW-1:0]  asic_rsp_data_o,
+  output logic                  asic_rsp_last_o,
   output logic                  asic_rsp_valid_o,
   input  logic                  asic_rsp_ready_i,
 
@@ -46,11 +47,11 @@ module snitch_fpga_dw_converter
   input  logic                  mem_req_ready_i,
   input  logic [    MemDW-1:0]  mem_rsp_data_i,
   input  logic                  mem_rsp_valid_i,
-  output logic                  mem_rsp_ready_o,
+  output logic                  mem_rsp_ready_o
 );
 
   // Counter type used to count the data transfers
-  typedef logic [$clog2(Stages)-1] cnt_t;
+  typedef logic [$clog2(Stages)-1:0] cnt_t;
 
   // The state to combine the request (write)
   // Is it necessary? Maybe we can just adjust the width
@@ -72,9 +73,26 @@ module snitch_fpga_dw_converter
   always_comb begin : req_fsm_comb
     req_state_d = req_state_q;
 
-    case (rsp_state_q)
+    mem_req_addr_o    = '0;
+    mem_req_data_o    = '0;
+    mem_req_write_o   = '0;
+    mem_req_wstrb_o   = '0;
+    mem_req_valid_o   = '0;
+    asic_req_ready_o  = '0;
+
+    case (req_state_q)
       REQIDLE: begin
-        
+        mem_req_addr_o    = asic_req_addr_i;
+        mem_req_data_o    = asic_req_data_i;
+        mem_req_write_o   = asic_req_write_i;
+        mem_req_wstrb_o   = {Stages{asic_req_wstrb_i}};
+        mem_req_valid_o   = asic_req_valid_i;
+        asic_req_ready_o  = mem_req_ready_i;
+      end
+
+      // not used for now
+      COMBINE: begin
+
       end
 
     endcase
@@ -114,6 +132,7 @@ module snitch_fpga_dw_converter
     // default output values
     asic_rsp_data_o   = '0;
     asic_rsp_valid_o  = '0;
+    asic_rsp_last_o   = 1'b0;
     /// do not ack the response yet 
     mem_rsp_ready_o   = '0;
 
@@ -124,18 +143,18 @@ module snitch_fpga_dw_converter
         // send out the first part and switch state
         if (mem_rsp_valid_i) begin
           // Send the highest AsicDW bits in this transaction
-          asic_rsp_data_o   = mem_rsp_data_i[MemDW-:AsicDW];
+          asic_rsp_data_o   = mem_rsp_data_i[(MemDW-1)-:AsicDW];
           // Valid response
           asic_rsp_valid_o  = 1'b1;
           // Store the unprocessed data
-          rsp_data_d        = mem_rsp_data_i[MemDW-AsicDW-1:0];
+          rsp_data_d        = mem_rsp_data_i[(MemDW-AsicDW-1):0];
 
 
-          if (rsp_ready_i) begin
+          if (asic_rsp_ready_i) begin
             // Do not switch until a handshaking is established
             rsp_state_d     = SEPARATE;
             // we already sent out first part, substract one additional count.
-            rsp_cnt_d       = (Stages-2);
+            rsp_cnt_d       = (Stages-1);
             // We have stored all information, safe to ACK the response
             mem_rsp_ready_o = 1'b1;
           end
@@ -144,11 +163,15 @@ module snitch_fpga_dw_converter
 
       SEPARATE: begin
         // Send the next transaction parts untill it finishes
-        asic_rsp_data_o   = rsp_data_q[MemDW-:AsicDW];
+        asic_rsp_data_o   = rsp_data_q[(MemDW-AsicDW-1)-:AsicDW];
         // Valid response
         asic_rsp_valid_o  = 1'b1;
+        if (rsp_cnt_q == 1'b1) begin
+          // last transaction for this request
+          asic_rsp_last_o = 1'b1;
+        end
         
-        if (rsp_ready_i) begin
+        if (asic_rsp_ready_i) begin
           // Shift up the data for next round
           rsp_data_d      = rsp_data_q << AsicDW;
           // Substract the counter

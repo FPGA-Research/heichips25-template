@@ -22,16 +22,6 @@ module testbench;
         end while (1);
     end
 
-    initial begin
-        // Resetting the design for 1 cycle
-        rst_n     = 1'b0;
-        #(T_CLK);
-        // Release the reset
-        rst_n     = 1'b1;
-        #(T_CLK);
-    end
-
-
     logic [7:0] ui_in;
     logic [7:0] uo_out;
     logic [7:0] uio_in;
@@ -40,7 +30,26 @@ module testbench;
     logic       ena;
 
 
-    heichips25_snitch_wrapper tt_um_example (
+    initial begin
+        // Resetting the design for 1 cycle
+        rst_n     = 1'b0;
+        // wake up signal
+        ui_in[2]  = 1'b0;
+        #(T_CLK);
+        // Release the reset
+        rst_n     = 1'b1;
+        #(T_CLK);
+
+        ui_in[2]  = 1'b1;
+        #(T_CLK);
+        ui_in[2]  = 1'b0;
+        #(T_CLK);
+    end
+
+
+
+
+    heichips25_snitch_wrapper i_dut (
         .ui_in,
         .uo_out,
         .uio_in,
@@ -51,8 +60,9 @@ module testbench;
         .rst_n
     );
 
+    logic [7:0] chip_addr;
     logic [3:0] chip_qdata, chip_pdata;
-    logic       chip_qstrb, chip_write, chip_qlast;
+    logic       chip_qstrb, chip_write, chip_plast;
     logic       chip_req_valid, chip_req_ready;
     logic       chip_rsp_valid, chip_rsp_ready;
 
@@ -60,8 +70,10 @@ module testbench;
     assign ui_in[7:4]  = chip_pdata;
     assign chip_write  = uo_out[3];
     assign chip_qstrb  = uo_out[2];
+    assign chip_addr[3:0] = uo_out [7:4];
+    assign chip_addr[7:4] = uio_out[7:4];
 
-    assign ui_in[3]    = chip_qlast;
+    assign ui_in[3]    = chip_plast;
 
     assign chip_req_valid = uo_out[0];
     assign ui_in[0] = chip_req_ready;
@@ -69,18 +81,45 @@ module testbench;
     assign ui_in[1] = chip_rsp_valid;
 
 
-    // TODO: Reconstruct the 32b request
-
-    // TODO: Decomposite to 4b response
-
-
     logic [ 9:0] req_addr;
     logic [31:0] req_data;
-    logic        req_write, req_wstrb;
+    logic [ 3:0] req_wstrb;
+    logic        req_write;
     logic        req_valid, req_ready;
 
     logic [31:0] rsp_data;
     logic        rsp_valid, rsp_ready;
+
+
+    snitch_fpga_dw_converter #(
+        .AsicAW   (8    ),
+        .AsicDW   (4    ),
+        .MemAW    (10   ),
+        .MemDW    (32   )
+    ) i_fpga (
+        .clk_i           (clk           ),
+        .rst_ni          (rst_n         ),
+        .asic_req_addr_i (chip_addr     ),
+        .asic_req_data_i (chip_qdata    ),
+        .asic_req_write_i(chip_write    ),
+        .asic_req_wstrb_i(chip_qstrb    ),
+        .asic_req_valid_i(chip_req_valid),
+        .asic_req_ready_o(chip_req_ready),
+        .asic_rsp_data_o (chip_pdata    ),
+        .asic_rsp_last_o (chip_plast    ),
+        .asic_rsp_valid_o(chip_rsp_valid),
+        .asic_rsp_ready_i(chip_rsp_ready),
+        .mem_req_addr_o  (req_addr      ),
+        .mem_req_data_o  (req_data      ),
+        .mem_req_write_o (req_write     ),
+        .mem_req_wstrb_o (req_wstrb     ),
+        .mem_req_valid_o (req_valid     ),
+        .mem_req_ready_i (req_ready     ),
+        .mem_rsp_data_i  (rsp_data      ),
+        .mem_rsp_valid_i (rsp_valid     ),
+        .mem_rsp_ready_o (rsp_ready     )
+    );
+
 
     snitch_vip #(
 

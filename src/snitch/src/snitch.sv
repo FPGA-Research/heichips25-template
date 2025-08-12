@@ -240,7 +240,7 @@ module snitch
 
   // Registers
   `FFAR(pc_q, pc_d, BootAddr, clk_i, rst_i)
-  `FFAR(wfi_q, wfi_d, '0, clk_i, rst_i)
+  `FFAR(wfi_q, wfi_d, 1'b1, clk_i, rst_i)
   `FFAR(wake_up_q, wake_up_d, '0, clk_i, rst_i)
   `FFAR(sb_q, sb_d, '0, clk_i, rst_i)
 

@@ -16,17 +16,18 @@ sources:
     - src/spill_register_flushable.sv
     - src/spill_register.sv
     # packages
-    - src/riscv_instr.sv
-    - src/snitch_pkg.sv
+    - src/snitch/src/riscv_instr.sv
+    - src/snitch/src/snitch_pkg.sv
     # rest of RTL
-    - src/snitch_regfile_ff.sv
-    - src/snitch_lsu.sv
-    - src/snitch.sv
+    - src/snitch/src/snitch_regfile_ff.sv
+    - src/snitch/src/snitch_lsu.sv
+    - src/snitch/src/snitch.sv
     # top level
     - src/heichips25_snitch_wrapper.sv
 
     - target: simulation
       files:
+      - tb/snitch_fpga_dw_converter.sv
       - tb/snitch_vip.sv
       - tb/testbench.sv
 

@@ -100,14 +100,14 @@ module heichips25_snitch_wrapper (
   logic     postreg_valid, postreg_ready;
 
   assign lsu_req = '{
-    addr : data_qaddr[12:5],
+    addr : data_qaddr[9:2],
     data : data_qdata,
     strb : data_strb,
     write: data_write
   };
 
   assign inst_req = '{
-    addr : inst_addr[12:5],
+    addr : inst_addr[9:2],
     data : inst_data,
     strb : '0,
     write: 1'b0
@@ -137,13 +137,13 @@ module heichips25_snitch_wrapper (
   logic        target_sel_d, target_sel_q;
 
   assign uio_out[3:0] = req_data_out;
-  assign uio_out[7:4] = postreg_req.addr[3:0];
-  assign uo_out [7:4] = postreg_req.addr[7:4];
+  assign uio_out[7:4] = postreg_req.addr[7:4];
+  assign uo_out [7:4] = postreg_req.addr[3:0];
   // TODO: assgin the correct write signal from either insn or data
   assign uo_out [3]   = postreg_req.write;
   assign uo_out [2]   = strb_out;
-  assign uo_out [1]   = req_data_valid;
-  assign uo_out [0]   = rsp_data_ready;
+  assign uo_out [1]   = rsp_data_ready;
+  assign uo_out [0]   = req_data_valid;
 
   assign rsp_data_last  = ui_in[3];
   assign wake_up_sync   = ui_in[2];
@@ -170,8 +170,8 @@ module heichips25_snitch_wrapper (
       PARTIAL: begin
         // MSB to store the data
         if (rsp_data_valid) begin
-          rsp_data_d = rsp_data_q >> 4;
-          rsp_data_d[31:28] = ui_in[7:4];
+          rsp_data_d = rsp_data_q << 4;
+          rsp_data_d[3:0] = ui_in[7:4];
           // ackowledge the transaction
           rsp_data_ready = 1'b1;
 
