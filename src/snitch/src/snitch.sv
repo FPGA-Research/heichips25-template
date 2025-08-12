@@ -7,11 +7,35 @@
 //          Marco Bertuletti <mbertuletti@iis.ee.ethz.ch>
 // Description: Top-Level of Snitch Integer Core RV32E
 
-`include "./src/registers.svh"
+// `include "./src/registers.svh"
 
 // `SNITCH_ENABLE_PERF Enables mcycle, minstret performance counters (read only)
 // `SNITCH_ENABLE_STALL_COUNTER Enables stall_ins, stall_raw, stall_lsu performance counters (read only)
 
+// Flip-Flop with asynchronous active-high reset
+// __q: Q output of FF
+// __d: D input of FF
+// __reset_value: value assigned upon reset
+// __clk: clock input
+// __arst: asynchronous reset, active-high
+`define FFAR(__q, __d, __reset_value, __clk, __arst)     \
+  always_ff @(posedge (__clk) or posedge (__arst)) begin \
+    if (__arst) begin                                    \
+      __q <= (__reset_value);                            \
+    end else begin                                       \
+      __q <= (__d);                                      \
+    end                                                  \
+  end
+
+// DEPRECATED - use `FF instead
+// Flip-Flop with asynchronous active-low reset
+// __q: Q output of FF
+// __d: D input of FF
+// __reset_value: value assigned upon reset
+// __clk: clock input
+// __arst_n: asynchronous reset, active-low
+`define FFARN(__q, __d, __reset_value, __clk, __arst_n) \
+  `FF(__q, __d, __reset_value, __clk, __arst_n)
 
 
 module snitch
@@ -272,21 +296,21 @@ module snitch
 
   assign valid_instr = (inst_ready_i & inst_valid_o) & operands_ready & dst_ready;
 
-  assign acc_stall = (acc_qvalid_o & ~acc_qready_i);
+  assign acc_stall = '0;
 
   // Stall the stage if we either didn't get a valid instruction or the LSU/Accelerator is not ready
   always_comb begin
     lsu_stall = (lsu_qvalid & ~lsu_qready);
     stall = ~valid_instr | lsu_stall | acc_stall | fence_stall;
-    if (acc_mem_stall) begin
-      // If acc memory is stalling, it is not necessary to stall the snich
-      // only memory instructions cannot be forward to avoid data hazards
-      if (is_acc_mem | is_store | is_load) begin
-        // If is a acc insn or snitch mem insn, we stall
-        lsu_stall = 1'b1;
-        stall     = 1'b1;
-      end
-    end
+    // if (acc_mem_stall) begin
+    //   // If acc memory is stalling, it is not necessary to stall the snich
+    //   // only memory instructions cannot be forward to avoid data hazards
+    //   if (is_acc_mem | is_store | is_load) begin
+    //     // If is a acc insn or snitch mem insn, we stall
+    //     lsu_stall = 1'b1;
+    //     stall     = 1'b1;
+    //   end
+    // end
   end
 
   // --------------------

@@ -96,6 +96,9 @@ module heichips25_snitch_wrapper (
   mem_req_t lsu_req, inst_req, muxed_req;
   logic     muxed_valid, muxed_ready;
 
+  mem_req_t postreg_req;
+  logic     postreg_valid, postreg_ready;
+
   assign lsu_req = '{
     addr : data_qaddr[12:5],
     data : data_qdata,
@@ -113,8 +116,8 @@ module heichips25_snitch_wrapper (
   logic rr_sel;
 
   for (genvar i = 0; i < 4; i++) begin
-    assign wstrb_extended[2*i]   = muxed_req.strb[i];
-    assign wstrb_extended[2*i+1] = muxed_req.strb[i];
+    assign wstrb_extended[2*i]   = postreg_req.strb[i];
+    assign wstrb_extended[2*i+1] = postreg_req.strb[i];
   end
 
   // assign inst_ready = 1'b1;
@@ -128,20 +131,21 @@ module heichips25_snitch_wrapper (
   logic        rsp_data_valid, rsp_data_ready;
   logic        rsp_data_last;
 
-  logic [31:0] addr_muxed;
+  // logic [31:0] addr_muxed;
   logic        strb_out;
 
   logic        target_sel_d, target_sel_q;
 
   assign uio_out[3:0] = req_data_out;
-  assign uio_out[7:4] = addr_muxed[ 8:5];
-  assign uo_out [7:4] = addr_muxed[12:9];
+  assign uio_out[7:4] = postreg_req.addr[3:0];
+  assign uo_out [7:4] = postreg_req.addr[7:4];
   // TODO: assgin the correct write signal from either insn or data
-  assign uo_out [3]   = muxed_req.write;
+  assign uo_out [3]   = postreg_req.write;
   assign uo_out [2]   = strb_out;
   assign uo_out [1]   = req_data_valid;
   assign uo_out [0]   = rsp_data_ready;
 
+  assign rsp_data_last  = ui_in[3];
   assign wake_up_sync   = ui_in[2];
   assign rsp_data_valid = ui_in[1];
   assign req_data_ready = ui_in[0];
@@ -156,6 +160,11 @@ module heichips25_snitch_wrapper (
     rsp_data_d  = rsp_data_q;
     rsp_state_d = rsp_state_q;
     inst_ready  = 1'b0;
+    inst_data   = '0;
+    data_pdata  = '0;
+    data_pvalid = 1'b0;
+
+    rsp_data_ready = 1'b0;
 
     case (rsp_state_q)
       PARTIAL: begin
@@ -211,6 +220,10 @@ module heichips25_snitch_wrapper (
     end
   end
 
+  // instruction does not have a full HS
+  // this bit is not used
+  logic inst_req_ready;
+
   // TODO: Add the arbiter for two ports
   rr_arb_tree #(
     .NumIn     ( 2         ),
@@ -218,53 +231,85 @@ module heichips25_snitch_wrapper (
     .ExtPrio   ( 1'b0      ),
     .AxiVldRdy ( 1'b1      ),
     .LockIn    ( 1'b1      )
-  ) i_rsp_arb (
+  ) i_req_arb (
     .clk_i   ( clk                  ),
     .rst_ni  ( rst_n                ),
     .flush_i ( '0                   ),
     .rr_i    ( '0                   ),
-    .req_i   ( {data_qvalid,  inst_valid}),
-    .gnt_o   (                           ),
-    .data_i  ( {lsu_req,      inst_req}  ),
-    .req_o   ( muxed_valid               ),
-    .gnt_i   ( muxed_ready               ),
-    .data_o  ( muxed_req                 ),
-    .idx_o   ( rr_sel                    )
+    .req_i   ( {data_qvalid,  inst_valid}     ),
+    .gnt_o   ( {data_qready,  inst_req_ready} ),
+    .data_i  ( {lsu_req,      inst_req}       ),
+    .req_o   ( muxed_valid                    ),
+    .gnt_i   ( muxed_ready                    ),
+    .data_o  ( muxed_req                      ),
+    .idx_o   ( rr_sel                         )
   );
+
+  spill_register #(
+    .T      (mem_req_t      )
+  ) i_req_register (
+    .clk_i  (clk            ),
+    .rst_ni (rst_n          ),
+    .data_i (muxed_req      ),
+    .valid_i(muxed_valid    ),
+    .ready_o(muxed_ready    ),
+    .data_o (postreg_req    ),
+    .valid_o(postreg_valid  ),
+    .ready_i(postreg_ready  )
+  );
+
+  // spill_register #(
+  //   .T(tcdm_master_req_t)
+  // ) i_tcdm_master_req_register (
+  //   .clk_i  (clk_i                          ),
+  //   .rst_ni (rst_ni                         ),
+  //   .data_i (prereg_tcdm_master_req[h]      ),
+  //   .valid_i(prereg_tcdm_master_req_valid[h]),
+  //   .ready_o(prereg_tcdm_master_req_ready[h]),
+  //   .data_o (tcdm_master_req_o[h]           ),
+  //   .valid_o(tcdm_master_req_valid_o[h]     ),
+  //   .ready_i(tcdm_master_req_ready_i[h]     )
+  // );
 
   always_comb begin : req_logic
     // Defaults
-    next_state    = state;
-    shift_reg_d   = shift_reg_q;
-    strb_reg_d    = strb_reg_q;
-    cnt_d         = cnt_q;
-    target_sel_d  = target_sel_q;
+    next_state      = state;
+    shift_reg_d     = shift_reg_q;
+    strb_reg_d      = strb_reg_q;
+    cnt_d           = cnt_q;
+    target_sel_d    = target_sel_q;
+
     req_data_out    = 4'd0;
+    req_data_valid  = 1'b0;
+    // addr_muxed      = '0;
 
     // TODO: connect the sel_d signal to the rr_arb output
 
     // We do not ack the request by default
-    muxed_ready = 1'b0;
+    postreg_ready = 1'b0;
 
     // TODO: assign it correctly from MUX, temporary connection for synthesis
-    req_addr_out = muxed_req.addr;
+    req_addr_out = postreg_req.addr;
 
     strb_out     = 1'b0;
 
-    if (muxed_req.write) begin
+    if (postreg_req.write) begin
       case (state)
         IDLE: begin
           // TODO: assign it correctly from MUX, temporary connection for synthesis
-          if (muxed_valid) begin
+          if (postreg_valid) begin
             // Upon a valid transfer, save the data into reg
             // TODO: assign it correctly from MUX, temporary connection for synthesis
-            shift_reg_d = ((muxed_req.data) >> 4);
+            shift_reg_d = ((postreg_req.data) >> 4);
             strb_reg_d  = (wstrb_extended >> 1);
             // Send out the first piece of data
-            req_data_out  = muxed_req.data[3:0];
+            req_data_out  = postreg_req.data[3:0];
             strb_out    = wstrb_extended[0];
 
             req_data_valid = 1'b1;
+
+            // Select the address from the mux
+            // addr_muxed = postreg_req.addr;
 
             if (req_data_ready) begin
               // The request has been accepted, add counter and move states
@@ -276,14 +321,14 @@ module heichips25_snitch_wrapper (
         end
 
         SEND: begin
-          req_data_out      = shift_reg_q[3:0];
+          req_data_out    = shift_reg_q[3:0];
           req_data_valid  = 1'b1;
           strb_out        = strb_reg_q[0];
 
           // The request is accepted, move to next 4b data or finish
           if (req_data_ready) begin
             // Do not ack the req until all have been translated
-            muxed_ready       = 1'b0;
+            postreg_ready       = 1'b0;
 
             // Last count, clear and switch back to idle
             if (cnt_q == 3'd7) begin
@@ -291,7 +336,7 @@ module heichips25_snitch_wrapper (
               cnt_d           = 1'b0;
               shift_reg_d     = '0;
               strb_reg_d      = '0;
-              muxed_ready     = 1'b1;
+              postreg_ready     = 1'b1;
             end else begin
               cnt_d           = cnt_q + 1;
               shift_reg_d     = (shift_reg_q >> 4);
@@ -303,7 +348,7 @@ module heichips25_snitch_wrapper (
     end else begin
       req_data_valid = 1'b1;
       if (req_data_ready) begin
-        muxed_ready  = 1'b1;
+        postreg_ready  = 1'b1;
       end
     end
   end
