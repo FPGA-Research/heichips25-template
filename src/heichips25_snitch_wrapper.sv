@@ -20,6 +20,22 @@ module heichips25_snitch_wrapper (
   logic [31:0] inst_addr, inst_data;
   logic inst_valid, inst_ready;
 
+  logic [31:0] postreg_inst_data,  prereg_inst_data;
+  logic        postreg_inst_ready, prereg_inst_ready;
+
+  always_ff @(posedge clk or negedge rst_n) begin : proc_insn_rsp
+    if(~rst_n) begin
+      postreg_inst_data  <= '0;
+      postreg_inst_ready <= '0;
+    end else begin
+      postreg_inst_data  <= prereg_inst_data;
+      postreg_inst_ready <= prereg_inst_ready;
+    end
+  end
+
+  assign prereg_inst_data  = inst_data;
+  assign prereg_inst_ready = inst_ready;
+
   // Data interface (q means request, p means response)
   logic [31:0] data_qaddr, data_qdata, data_pdata;
   logic [3 :0] data_strb;
@@ -44,9 +60,9 @@ module heichips25_snitch_wrapper (
     .rst_i              ( !rst_n        ),
     .hart_id_i          ( '0            ),
     .inst_addr_o        ( inst_addr     ),
-    .inst_data_i        ( inst_data     ),
+    .inst_data_i        ( prereg_inst_data ),
     .inst_valid_o       ( inst_valid    ),
-    .inst_ready_i       ( inst_ready    ),
+    .inst_ready_i       ( prereg_inst_ready),
     .acc_qaddr_o        (               ),
     .acc_qid_o          (               ),
     .acc_qdata_op_o     (               ),
@@ -95,12 +111,18 @@ module heichips25_snitch_wrapper (
     logic [31:0] data;
     logic        write;
     logic  [3:0] strb;
+  } mem_payload_t;
+
+  typedef struct packed {
+    mem_payload_t payload;
+    logic         sel;
   } mem_req_t;
 
-  mem_req_t lsu_req, inst_req, muxed_req;
+  mem_payload_t lsu_req, inst_req, muxed_req;
   logic     muxed_valid, muxed_ready;
 
-  mem_req_t postreg_req;
+  mem_req_t prereg_req,    postreg_req;
+  logic     prereg_valid,  prereg_ready;
   logic     postreg_valid, postreg_ready;
 
   assign lsu_req = '{
@@ -120,8 +142,8 @@ module heichips25_snitch_wrapper (
   logic rr_sel;
 
   for (genvar i = 0; i < 4; i++) begin
-    assign wstrb_extended[2*i]   = postreg_req.strb[i];
-    assign wstrb_extended[2*i+1] = postreg_req.strb[i];
+    assign wstrb_extended[2*i]   = postreg_req.payload.strb[i];
+    assign wstrb_extended[2*i+1] = postreg_req.payload.strb[i];
   end
 
   // assign inst_ready = 1'b1;
@@ -129,7 +151,6 @@ module heichips25_snitch_wrapper (
   // TODO: Assign to correct output signals
   logic [3:0]  req_data_out;
   logic        req_data_valid, req_data_ready;
-  logic [7:0]  req_addr_out;
 
   logic [31:0] rsp_data_d, rsp_data_q;
   logic        rsp_data_valid, rsp_data_ready;
@@ -141,10 +162,10 @@ module heichips25_snitch_wrapper (
   logic        target_sel_d, target_sel_q;
 
   assign uio_out[3:0] = req_data_out;
-  assign uio_out[7:4] = postreg_req.addr[7:4];
-  assign uo_out [7:4] = postreg_req.addr[3:0];
+  assign uio_out[7:4] = postreg_req.payload.addr[7:4];
+  assign uo_out [7:4] = postreg_req.payload.addr[3:0];
   // TODO: assgin the correct write signal from either insn or data
-  assign uo_out [3]   = postreg_req.write;
+  assign uo_out [3]   = postreg_req.payload.write;
   assign uo_out [2]   = strb_out;
   assign uo_out [1]   = rsp_data_ready;
   assign uo_out [0]   = req_data_valid;
@@ -245,11 +266,11 @@ module heichips25_snitch_wrapper (
 
   // TODO: Add the arbiter for two ports
   rr_arb_tree #(
-    .NumIn     ( 2         ),
-    .DataType  ( mem_req_t ),
-    .ExtPrio   ( 1'b0      ),
-    .AxiVldRdy ( 1'b1      ),
-    .LockIn    ( 1'b1      )
+    .NumIn     ( 2              ),
+    .DataType  ( mem_payload_t  ),
+    .ExtPrio   ( 1'b0           ),
+    .AxiVldRdy ( 1'b1           ),
+    .LockIn    ( 1'b1           )
   ) i_req_arb (
     .clk_i   ( clk                  ),
     .rst_ni  ( rst_n                ),
@@ -264,31 +285,23 @@ module heichips25_snitch_wrapper (
     .idx_o   ( rr_sel                         )
   );
 
+  assign prereg_req.payload = muxed_req;
+  assign prereg_req.sel     = rr_sel;
+  assign prereg_valid       = muxed_valid;
+  assign muxed_ready        = prereg_ready;
+
   spill_register #(
-    .T      (mem_req_t      )
+    .T      (mem_req_t  )
   ) i_req_register (
     .clk_i  (clk            ),
     .rst_ni (rst_n          ),
-    .data_i (muxed_req      ),
-    .valid_i(muxed_valid    ),
-    .ready_o(muxed_ready    ),
+    .data_i (prereg_req     ),
+    .valid_i(prereg_valid   ),
+    .ready_o(prereg_ready   ),
     .data_o (postreg_req    ),
     .valid_o(postreg_valid  ),
     .ready_i(postreg_ready  )
   );
-
-  // spill_register #(
-  //   .T(tcdm_master_req_t)
-  // ) i_tcdm_master_req_register (
-  //   .clk_i  (clk_i                          ),
-  //   .rst_ni (rst_ni                         ),
-  //   .data_i (prereg_tcdm_master_req[h]      ),
-  //   .valid_i(prereg_tcdm_master_req_valid[h]),
-  //   .ready_o(prereg_tcdm_master_req_ready[h]),
-  //   .data_o (tcdm_master_req_o[h]           ),
-  //   .valid_o(tcdm_master_req_valid_o[h]     ),
-  //   .ready_i(tcdm_master_req_ready_i[h]     )
-  // );
 
   always_comb begin : req_logic
     // Defaults
@@ -307,22 +320,23 @@ module heichips25_snitch_wrapper (
     // We do not ack the request by default
     postreg_ready = 1'b0;
 
-    // TODO: assign it correctly from MUX, temporary connection for synthesis
-    req_addr_out = postreg_req.addr;
-
     strb_out     = 1'b0;
 
-    if (postreg_req.write) begin
+    if (postreg_valid) begin
+      target_sel_d = postreg_req.sel;
+    end
+
+    if (postreg_req.payload.write) begin
       case (state)
         IDLE: begin
           // TODO: assign it correctly from MUX, temporary connection for synthesis
           if (postreg_valid) begin
             // Upon a valid transfer, save the data into reg
             // TODO: assign it correctly from MUX, temporary connection for synthesis
-            shift_reg_d = ((postreg_req.data) >> 4);
+            shift_reg_d = ((postreg_req.payload.data) >> 4);
             strb_reg_d  = (wstrb_extended >> 1);
             // Send out the first piece of data
-            req_data_out  = postreg_req.data[3:0];
+            req_data_out  = postreg_req.payload.data[3:0];
             strb_out    = wstrb_extended[0];
 
             req_data_valid = 1'b1;
