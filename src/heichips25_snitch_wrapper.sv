@@ -145,6 +145,9 @@ module heichips25_snitch_wrapper (
   assign uo_out [1]   = rsp_data_ready;
   assign uo_out [0]   = req_data_valid;
 
+  // We use all IO as output
+  assign uio_oe       = 8'hFF;
+
   assign rsp_data_last  = ui_in[3];
   assign wake_up_sync   = ui_in[2];
   assign rsp_data_valid = ui_in[1];
@@ -155,14 +158,16 @@ module heichips25_snitch_wrapper (
   } rsp_fsm_e;
 
   rsp_fsm_e rsp_state_d, rsp_state_q;
+  logic[31:0] prereg_pdata;
+  logic       prereg_pvalid, prereg_pready;
 
   always_comb begin : rsp_logic
     rsp_data_d  = rsp_data_q;
     rsp_state_d = rsp_state_q;
     inst_ready  = 1'b0;
     inst_data   = '0;
-    data_pdata  = '0;
-    data_pvalid = 1'b0;
+    prereg_pdata  = '0;
+    prereg_pvalid = 1'b0;
 
     rsp_data_ready = 1'b0;
 
@@ -194,10 +199,10 @@ module heichips25_snitch_wrapper (
             rsp_state_d = PARTIAL;
           end else begin
             // 1 is pointing to the LSU
-            data_pdata  = rsp_data_q;
-            data_pvalid = 1'b1;
+            prereg_pdata  = rsp_data_q;
+            prereg_pvalid = 1'b1;
 
-            if (data_pready) begin
+            if (prereg_pready) begin
               // Accepted, clean and return
               rsp_data_d = '0;
               rsp_state_d = PARTIAL;
@@ -219,6 +224,19 @@ module heichips25_snitch_wrapper (
       target_sel_q <= target_sel_d;
     end
   end
+
+  spill_register #(
+    .T      (logic[31:0]    )
+  ) i_rsp_register (
+    .clk_i  (clk            ),
+    .rst_ni (rst_n          ),
+    .data_i (prereg_pdata   ),
+    .valid_i(prereg_pvalid  ),
+    .ready_o(prereg_pready  ),
+    .data_o (data_pdata     ),
+    .valid_o(data_pvalid    ),
+    .ready_i(data_pready    )
+  );
 
   // instruction does not have a full HS
   // this bit is not used
