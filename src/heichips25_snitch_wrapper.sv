@@ -46,14 +46,14 @@ module heichips25_snitch_wrapper (
 
   localparam int unsigned BootAddr = 32'h0000_0000;
 
-  // REMOVE THIS LATER IF YOU DECIDE TO USE THEM 
+  // REMOVE THIS LATER IF YOU DECIDE TO USE THEM
   // ADDING THIS TO REMOVE SYNTH CHECK ERROR
   assign uio_oe       = 8'hFF;
 
   snitch #(
     .BootAddr ( BootAddr ),
     .MTVEC    ( BootAddr ),
-    .RVE      ( 1'b0     ),
+    .RVE      ( 1'b1     ),
     .RVM      ( 1'b1     )
   ) i_snitch (
     .clk_i              ( clk           ),
@@ -92,9 +92,6 @@ module heichips25_snitch_wrapper (
     .data_pready_o      ( data_pready   ),
     .wake_up_sync_i     ( wake_up_sync  )
   );
-
-  // === TODO3: FIFO to serialize 32-bit to 4-bit ===
-  
 
   typedef enum logic {
     IDLE, SEND
