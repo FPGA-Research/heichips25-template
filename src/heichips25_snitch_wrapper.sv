@@ -30,9 +30,10 @@ module heichips25_snitch_wrapper (
 
   localparam int unsigned BootAddr = 32'h0000_0000;
 
-// REMOVE THIS LATER IF YOU DECIDE TO USE THEM 
-// ADDING THIS TO REMOVE SYNTH CHECK ERROR
-assign uio_oe=8'b1111_1111;
+  // REMOVE THIS LATER IF YOU DECIDE TO USE THEM 
+  // ADDING THIS TO REMOVE SYNTH CHECK ERROR
+  assign uio_oe       = 8'hFF;
+
   snitch #(
     .BootAddr ( BootAddr ),
     .MTVEC    ( BootAddr ),
@@ -147,9 +148,6 @@ assign uio_oe=8'b1111_1111;
   assign uo_out [2]   = strb_out;
   assign uo_out [1]   = rsp_data_ready;
   assign uo_out [0]   = req_data_valid;
-
-  // We use all IO as output
-  assign uio_oe       = 8'hFF;
 
   assign rsp_data_last  = ui_in[3];
   assign wake_up_sync   = ui_in[2];
