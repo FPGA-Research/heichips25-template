@@ -1,8 +1,8 @@
 # LibreLane configuration file
 
-DESIGN_NAME: heichips25_template
+DESIGN_NAME: heichips25_snitch_wrapper
 VERILOG_FILES: 
-- dir::../src/heichips25_template.sv 
+- dir::../src/heichips25_snitch_wrapper.sv 
 - dir::../src/snitch/src/riscv_instr.sv
 - dir::../src/snitch/src/snitch.sv
 - dir::../src/snitch/src/snitch_lsu.sv
@@ -16,28 +16,37 @@ VERILOG_FILES:
 
 CLOCK_PORT: clk
 CLOCK_PERIOD: 10 # 10ns = 100MHz
-USE_SLANG: true
+
 # Reduce wasted space
 TOP_MARGIN_MULT: 1
 BOTTOM_MARGIN_MULT: 1
 LEFT_MARGIN_MULT: 6
 RIGHT_MARGIN_MULT: 6
-ERROR_ON_SYNTH_CHECKS: false
-ERROR_ON_DISCONNECTED_PINS: false
+#ERROR_ON_SYNTH_CHECKS: false
+#ERROR_ON_DISCONNECTED_PINS: false
 # Absolute die size
 FP_SIZING: absolute
 
 # Small DEF template
-DIE_AREA: [0, 0, 500, 200]
-FP_DEF_TEMPLATE: dir::def/heichips25_template_small.def
+#DIE_AREA: [0, 0, 500, 200]
+#FP_DEF_TEMPLATE: dir::def/heichips25_template_small.def
 
 # Large DEF template
-#DIE_AREA: [0, 0, 500, 415]
-#FP_DEF_TEMPLATE: dir::def/heichips25_template_large.def
+DIE_AREA: [0, 0, 500, 415]
+FP_DEF_TEMPLATE: dir::def/heichips25_template_large.def
 
 # Don't use power rings or TopMetal2 layer
 PDN_MULTILAYER: false
 RT_MAX_LAYER: TopMetal1
 
 # Enable for better SystemVerilog support
-#USE_SLANG: true
+USE_SLANG: true
+
+#OUR OPTIMIZATIONS
+GRT_ALLOW_CONGESTION: true
+PL_TARGET_DENSITY_PCT: 65
+SYNTH_STRATEGY: AREA 1
+#SYNTH_ABC_USE_MFS3: true
+PL_TIME_DRIVEN: false
+#SYNTH_HIERARCHY_MODE: keep
+SYNTH_AUTONAME: true
