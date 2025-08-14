@@ -71,7 +71,9 @@ module snitch
   output logic [31:0]   inst_addr_o,
   input  logic [31:0]   inst_data_i,
   output logic          inst_valid_o,
+  input  logic          inst_req_ready_i,
   input  logic          inst_ready_i,
+  output logic          inst_ack_o,
 
   /// Accelerator Interface - Master Port
   /// Independent channels for transaction request and read completion.
@@ -263,8 +265,32 @@ module snitch
 
 
   // instruction fetch interface
-  assign inst_addr_o = pc_q;
-  assign inst_valid_o = ~wfi_q;
+
+  logic inst_valid_d, inst_valid_q;
+
+  `FFAR(inst_valid_q, inst_valid_d, 1'b1, clk_i, rst_i)
+
+  always_comb begin
+    inst_addr_o  = pc_q;
+    inst_valid_o = inst_valid_q;
+    inst_valid_d = inst_valid_q;
+
+    inst_ack_o   = 1'b0;
+
+    if (wfi_q) begin
+      inst_valid_o = 1'b0;
+    end
+
+    if (inst_req_ready_i) begin
+      inst_valid_d = 1'b0;
+    end
+
+    if (pc_d != pc_q) begin
+      inst_valid_d = 1'b1;
+      inst_ack_o   = 1'b1;
+    end
+
+  end
 
   // --------------------
   // Control
@@ -294,7 +320,8 @@ module snitch
   assign dstrs1_ready = ~uses_rs1 | (uses_rs1 & ~sb_q[rs1]);
   assign dst_ready = dstrd_ready & dstrs1_ready;
 
-  assign valid_instr = (inst_ready_i & inst_valid_o) & operands_ready & dst_ready;
+  // assign valid_instr = (inst_ready_i & inst_valid_o) & operands_ready & dst_ready;
+  assign valid_instr = (inst_ready_i) & operands_ready & dst_ready;
 
   assign acc_stall = '0;
 

@@ -18,23 +18,11 @@ module heichips25_snitch_wrapper (
 
   // Instruction interface (should be muxed with data)
   logic [31:0] inst_addr, inst_data;
-  logic inst_valid, inst_ready;
+  logic inst_valid, inst_rsp_valid;
 
   logic [31:0] postreg_inst_data,  prereg_inst_data;
+  logic        postreg_inst_valid, prereg_inst_valid;
   logic        postreg_inst_ready, prereg_inst_ready;
-
-  always_ff @(posedge clk or negedge rst_n) begin : proc_insn_rsp
-    if(~rst_n) begin
-      postreg_inst_data  <= '0;
-      postreg_inst_ready <= '0;
-    end else begin
-      postreg_inst_data  <= prereg_inst_data;
-      postreg_inst_ready <= prereg_inst_ready;
-    end
-  end
-
-  assign prereg_inst_data  = inst_data;
-  assign prereg_inst_ready = inst_ready;
 
   // Data interface (q means request, p means response)
   logic [31:0] data_qaddr, data_qdata, data_pdata;
@@ -49,49 +37,6 @@ module heichips25_snitch_wrapper (
   // REMOVE THIS LATER IF YOU DECIDE TO USE THEM
   // ADDING THIS TO REMOVE SYNTH CHECK ERROR
   assign uio_oe       = 8'hFF;
-
-  snitch #(
-    .BootAddr ( BootAddr ),
-    .MTVEC    ( BootAddr ),
-    .RVE      ( 1'b1     ),
-    .RVM      ( 1'b1     )
-  ) i_snitch (
-    .clk_i              ( clk           ),
-    .rst_i              ( !rst_n        ),
-    .hart_id_i          ( '0            ),
-    .inst_addr_o        ( inst_addr     ),
-    .inst_data_i        ( prereg_inst_data ),
-    .inst_valid_o       ( inst_valid    ),
-    .inst_ready_i       ( prereg_inst_ready),
-    .acc_qaddr_o        (               ),
-    .acc_qid_o          (               ),
-    .acc_qdata_op_o     (               ),
-    .acc_qdata_arga_o   (               ),
-    .acc_qdata_argb_o   (               ),
-    .acc_qdata_argc_o   (               ),
-    .acc_qvalid_o       (               ),
-    .acc_qready_i       ( '0            ),
-    .acc_pdata_i        ( '0            ),
-    .acc_pid_i          ( '0            ),
-    .acc_perror_i       ( '0            ),
-    .acc_pvalid_i       ( '0            ),
-    .acc_pready_o       (               ),
-    .acc_pwrite_i       ( '0            ),
-    .data_qaddr_o       ( data_qaddr    ),
-    .data_qwrite_o      ( data_write    ),
-    .data_qamo_o        (               ),
-    .data_qdata_o       ( data_qdata    ),
-    .data_qstrb_o       ( data_strb     ),
-    .data_qid_o         (               ),
-    .data_qvalid_o      ( data_qvalid   ),
-    .data_qready_i      ( data_qready   ),
-    .data_pdata_i       ( data_pdata    ),
-    .data_perror_i      ( '0            ),
-    .data_pid_i         ( '0            ),
-    .data_pvalid_i      ( data_pvalid   ),
-    .data_pready_o      ( data_pready   ),
-    .wake_up_sync_i     ( wake_up_sync  )
-  );
 
   typedef enum logic {
     IDLE, SEND
@@ -143,9 +88,7 @@ module heichips25_snitch_wrapper (
     assign wstrb_extended[2*i+1] = postreg_req.payload.strb[i];
   end
 
-  // assign inst_ready = 1'b1;
 
-  // TODO: Assign to correct output signals
   logic [3:0]  req_data_out;
   logic        req_data_valid, req_data_ready;
 
@@ -153,7 +96,6 @@ module heichips25_snitch_wrapper (
   logic        rsp_data_valid, rsp_data_ready;
   logic        rsp_data_last;
 
-  // logic [31:0] addr_muxed;
   logic        strb_out;
 
   logic        target_sel_d, target_sel_q;
@@ -161,7 +103,6 @@ module heichips25_snitch_wrapper (
   assign uio_out[3:0] = req_data_out;
   assign uio_out[7:4] = postreg_req.payload.addr[7:4];
   assign uo_out [7:4] = postreg_req.payload.addr[3:0];
-  // TODO: assgin the correct write signal from either insn or data
   assign uo_out [3]   = postreg_req.payload.write;
   assign uo_out [2]   = strb_out;
   assign uo_out [1]   = rsp_data_ready;
@@ -180,10 +121,78 @@ module heichips25_snitch_wrapper (
   logic[31:0] prereg_pdata;
   logic       prereg_pvalid, prereg_pready;
 
+  spill_register #(
+    .T      (logic[31:0]    )
+  ) i_inst_register (
+    .clk_i  (clk            ),
+    .rst_ni (rst_n          ),
+    .data_i (prereg_inst_data   ),
+    .valid_i(prereg_inst_valid  ),
+    .ready_o(prereg_inst_ready  ),
+    .data_o (postreg_inst_data  ),
+    .valid_o(postreg_inst_valid ),
+    .ready_i(postreg_inst_ready )
+  );
+
+  always_comb begin
+    prereg_inst_data  = inst_data;
+    prereg_inst_valid = inst_rsp_valid;
+  end
+
+
+  // instruction does not have a full HS
+  logic inst_req_ready;
+
+  snitch #(
+    .BootAddr ( BootAddr ),
+    .MTVEC    ( BootAddr ),
+    .RVE      ( 1'b1     ),
+    .RVM      ( 1'b1     )
+  ) i_snitch (
+    .clk_i              ( clk           ),
+    .rst_i              ( !rst_n        ),
+    .hart_id_i          ( '0            ),
+    .inst_addr_o        ( inst_addr     ),
+    .inst_data_i        ( postreg_inst_data ),
+    .inst_req_ready_i   ( inst_req_ready    ),
+    .inst_valid_o       ( inst_valid        ),
+    .inst_ready_i       ( postreg_inst_valid),
+    .inst_ack_o         ( postreg_inst_ready),
+    .acc_qaddr_o        (               ),
+    .acc_qid_o          (               ),
+    .acc_qdata_op_o     (               ),
+    .acc_qdata_arga_o   (               ),
+    .acc_qdata_argb_o   (               ),
+    .acc_qdata_argc_o   (               ),
+    .acc_qvalid_o       (               ),
+    .acc_qready_i       ( '0            ),
+    .acc_pdata_i        ( '0            ),
+    .acc_pid_i          ( '0            ),
+    .acc_perror_i       ( '0            ),
+    .acc_pvalid_i       ( '0            ),
+    .acc_pready_o       (               ),
+    .acc_pwrite_i       ( '0            ),
+    .data_qaddr_o       ( data_qaddr    ),
+    .data_qwrite_o      ( data_write    ),
+    .data_qamo_o        (               ),
+    .data_qdata_o       ( data_qdata    ),
+    .data_qstrb_o       ( data_strb     ),
+    .data_qid_o         (               ),
+    .data_qvalid_o      ( data_qvalid   ),
+    .data_qready_i      ( data_qready   ),
+    .data_pdata_i       ( data_pdata    ),
+    .data_perror_i      ( '0            ),
+    .data_pid_i         ( '0            ),
+    .data_pvalid_i      ( data_pvalid   ),
+    .data_pready_o      ( data_pready   ),
+    .wake_up_sync_i     ( wake_up_sync  )
+  );
+
+
   always_comb begin : rsp_logic
     rsp_data_d  = rsp_data_q;
     rsp_state_d = rsp_state_q;
-    inst_ready  = 1'b0;
+    inst_rsp_valid  = 1'b0;
     inst_data   = '0;
     prereg_pdata  = '0;
     prereg_pvalid = 1'b0;
@@ -207,25 +216,23 @@ module heichips25_snitch_wrapper (
       end
 
       DONE: begin
-        if (rsp_data_valid) begin
-          if (target_sel_q == 0) begin
-            // 0 is pointing to the instruction
-            inst_data   = rsp_data_q;
-            // Half handshaking on instruction side
-            inst_ready  = 1'b1;
+        if (target_sel_q == 0) begin
+          // 0 is pointing to the instruction
+          inst_data   = rsp_data_q;
+          // Half handshaking on instruction side
+          inst_rsp_valid  = 1'b1;
 
-            rsp_data_d  = '0;
+          rsp_data_d  = '0;
+          rsp_state_d = PARTIAL;
+        end else begin
+          // 1 is pointing to the LSU
+          prereg_pdata  = rsp_data_q;
+          prereg_pvalid = 1'b1;
+
+          if (prereg_pready) begin
+            // Accepted, clean and return
+            rsp_data_d = '0;
             rsp_state_d = PARTIAL;
-          end else begin
-            // 1 is pointing to the LSU
-            prereg_pdata  = rsp_data_q;
-            prereg_pvalid = 1'b1;
-
-            if (prereg_pready) begin
-              // Accepted, clean and return
-              rsp_data_d = '0;
-              rsp_state_d = PARTIAL;
-            end
           end
         end
       end
@@ -257,11 +264,6 @@ module heichips25_snitch_wrapper (
     .ready_i(data_pready    )
   );
 
-  // instruction does not have a full HS
-  // this bit is not used
-  logic inst_req_ready;
-
-  // TODO: Add the arbiter for two ports
   rr_arb_tree #(
     .NumIn     ( 2              ),
     .DataType  ( mem_payload_t  ),
@@ -310,26 +312,18 @@ module heichips25_snitch_wrapper (
 
     req_data_out    = 4'd0;
     req_data_valid  = 1'b0;
-    // addr_muxed      = '0;
 
-    // TODO: connect the sel_d signal to the rr_arb output
 
     // We do not ack the request by default
     postreg_ready = 1'b0;
 
     strb_out     = 1'b0;
 
-    if (postreg_valid) begin
-      target_sel_d = postreg_req.sel;
-    end
-
     if (postreg_req.payload.write) begin
       case (state)
         IDLE: begin
-          // TODO: assign it correctly from MUX, temporary connection for synthesis
           if (postreg_valid) begin
             // Upon a valid transfer, save the data into reg
-            // TODO: assign it correctly from MUX, temporary connection for synthesis
             shift_reg_d = ((postreg_req.payload.data) >> 4);
             strb_reg_d  = (wstrb_extended >> 1);
             // Send out the first piece of data
@@ -337,9 +331,6 @@ module heichips25_snitch_wrapper (
             strb_out    = wstrb_extended[0];
 
             req_data_valid = 1'b1;
-
-            // Select the address from the mux
-            // addr_muxed = postreg_req.addr;
 
             if (req_data_ready) begin
               // The request has been accepted, add counter and move states
@@ -376,10 +367,12 @@ module heichips25_snitch_wrapper (
         end
       endcase
     end else begin
-      req_data_valid = 1'b1;
-      if (req_data_ready) begin
-        postreg_ready  = 1'b1;
-      end
+      req_data_valid = postreg_valid;
+      postreg_ready  = req_data_ready;
+    end
+
+    if (postreg_valid & postreg_ready) begin
+      target_sel_d = postreg_req.sel;
     end
   end
 

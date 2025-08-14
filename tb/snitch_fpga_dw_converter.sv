@@ -62,6 +62,9 @@ module snitch_fpga_dw_converter
 
   fsm_req_e req_state_d, req_state_q;
 
+  // Do not accept next request if we are busy
+  logic busy_d, busy_q;
+
   always_ff @(posedge clk_i or negedge rst_ni) begin : proc_req_fsm
     if(~rst_ni) begin
       req_state_q <= REQIDLE;
@@ -71,31 +74,7 @@ module snitch_fpga_dw_converter
   end
 
   always_comb begin : req_fsm_comb
-    req_state_d = req_state_q;
 
-    mem_req_addr_o    = '0;
-    mem_req_data_o    = '0;
-    mem_req_write_o   = '0;
-    mem_req_wstrb_o   = '0;
-    mem_req_valid_o   = '0;
-    asic_req_ready_o  = '0;
-
-    case (req_state_q)
-      REQIDLE: begin
-        mem_req_addr_o    = asic_req_addr_i;
-        mem_req_data_o    = asic_req_data_i;
-        mem_req_write_o   = asic_req_write_i;
-        mem_req_wstrb_o   = {Stages{asic_req_wstrb_i}};
-        mem_req_valid_o   = asic_req_valid_i;
-        asic_req_ready_o  = mem_req_ready_i;
-      end
-
-      // not used for now
-      COMBINE: begin
-
-      end
-
-    endcase
   end
 
 
@@ -115,16 +94,55 @@ module snitch_fpga_dw_converter
       rsp_state_q <= RSPIDLE;
       rsp_cnt_q   <= '0;
       rsp_data_q  <= '0;
+      busy_q      <= '0;
     end else begin
       rsp_state_q <= rsp_state_d;
       rsp_cnt_q   <= rsp_cnt_d;
       rsp_data_q  <= rsp_data_d;
+      busy_q      <= busy_d;
     end
   end
 
 
 
-  always_comb begin : rsp_fsm_comb
+  always_comb begin : fsm_comb
+    busy_d      = busy_q;
+
+    // Request
+    req_state_d = req_state_q;
+
+    mem_req_addr_o    = '0;
+    mem_req_data_o    = '0;
+    mem_req_write_o   = '0;
+    mem_req_wstrb_o   = '0;
+    mem_req_valid_o   = '0;
+    asic_req_ready_o  = '0;
+
+    case (req_state_q)
+      REQIDLE: begin
+        mem_req_addr_o    = asic_req_addr_i;
+        mem_req_data_o    = asic_req_data_i;
+        mem_req_write_o   = asic_req_write_i;
+        mem_req_wstrb_o   = {Stages{asic_req_wstrb_i}};
+        // Do not accept if we are busy
+        mem_req_valid_o   = busy_q ? '0   : asic_req_valid_i;
+        asic_req_ready_o  = busy_q ? 1'b0 : mem_req_ready_i;
+
+        if (mem_req_valid_o) begin
+          // Start to handle one request
+          busy_d = 1'b1;
+        end
+      end
+
+      // not used for now
+      COMBINE: begin
+
+      end
+
+    endcase
+
+
+    // Response
     rsp_state_d = rsp_state_q;
     rsp_cnt_d   = rsp_cnt_q;
     rsp_data_d  = rsp_data_q;
@@ -148,7 +166,6 @@ module snitch_fpga_dw_converter
           asic_rsp_valid_o  = 1'b1;
           // Store the unprocessed data
           rsp_data_d        = mem_rsp_data_i[(MemDW-AsicDW-1):0];
-
 
           if (asic_rsp_ready_i) begin
             // Do not switch until a handshaking is established
@@ -182,6 +199,7 @@ module snitch_fpga_dw_converter
             rsp_state_d   = RSPIDLE;
             rsp_cnt_d     = '0;
             rsp_data_d    = '0;
+            busy_d        = 1'b0;
           end
         end
       end
