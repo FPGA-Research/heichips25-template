@@ -1,0 +1,13 @@
+VERSION 5.8 ;
+
+MACRO snitch_small_logo
+  CLASS BLOCK ;
+  ORIGIN 0 0 ;
+  FOREIGN snitch_small_logo 0 0 ;
+  SIZE 55 BY 55 ;
+
+  OBS
+    LAYER TopMetal1 ;
+      RECT 0 0 55 55 ;
+  END
+END snitch_small_logo

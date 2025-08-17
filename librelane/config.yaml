@@ -13,6 +13,7 @@ VERILOG_FILES:
 - dir::../src/spill_register.sv
 - dir::../src/spill_register_flushable.sv
 - dir::../src/lzc.sv
+#- dir::logo/rtl/snitch_small_logo.v
 
 CLOCK_PORT: clk
 CLOCK_PERIOD: 10 # 10ns = 100MHz
@@ -37,22 +38,22 @@ FP_DEF_TEMPLATE: dir::def/heichips25_template_large.def
 
 # Don't use power rings or TopMetal2 layer
 PDN_MULTILAYER: false
-RT_MAX_LAYER: TopMetal1
+RT_MAX_LAYER: Metal5
 
 # Enable for better SystemVerilog support
 USE_SLANG: true
 
 #OUR OPTIMIZATIONS
 GRT_ALLOW_CONGESTION: true
-PL_TARGET_DENSITY_PCT: 50
+PL_TARGET_DENSITY_PCT: 54
 SYNTH_STRATEGY: AREA 1
 #SYNTH_ABC_USE_MFS3: true
 PL_TIME_DRIVEN: true
 #SYNTH_HIERARCHY_MODE: keep
 SYNTH_AUTONAME: true
-PL_RESIZER_SETUP_SLACK_MARGIN: 0.1
-PL_RESIZER_SETUP_MAX_BUFFER_PCT: 50
-GRT_RESIZER_SETUP_MAX_BUFFER_PCT: 50
-GRT_RESIZER_SETUP_SLACK_MARGIN: 0.01
+PL_RESIZER_SETUP_SLACK_MARGIN: 0.2
+PL_RESIZER_SETUP_MAX_BUFFER_PCT: 80
+GRT_RESIZER_SETUP_MAX_BUFFER_PCT: 80
+GRT_RESIZER_SETUP_SLACK_MARGIN: 0.1
 
 
