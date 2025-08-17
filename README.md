@@ -36,7 +36,7 @@ A central design choice of our macro is a **narrow, time‑multiplexed I/O datap
 
 * [Integration notes (eFPGA + chip I/O)](#integration-notes-efpga--chip-io)
 
-* [Status & known limitations](#Status & known limitations)
+* [Status & known limitations](#Status--&--known--limitations)
 
 * [References & attributions](#references--attributions)
 
