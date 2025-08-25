@@ -1,4 +1,4 @@
-all: macro copy-final
+all: macro copy-macro
 
 PDK_ROOT ?= ~/.ciel
 PDK ?= ihp-sg13g2
