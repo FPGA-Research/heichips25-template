@@ -78,6 +78,7 @@ The following FPGA boards are supported by the Makefile:
 - [iCE40HX8K-EVB](https://www.olimex.com/Products/FPGA/iCE40/iCE40HX8K-EVB/)
 - [Tang Nano 9K](https://wiki.sipeed.com/hardware/en/tang/Tang-Nano-9K/Nano-9K.html)
 - [Basys 3](https://digilent.com/reference/programmable-logic/basys-3/start)
+- [Boolean](https://www.realdigital.org/hardware/boolean)
 
 > [!IMPORTANT]
 > You have to edit the top-level module under `fpga/<board_name>/<board_name>_top.sv` for your FPGA board so that it is compatible with your HeiChips design.
@@ -115,7 +116,7 @@ make upload-ulx3s
 ```
 
 > [!IMPORTANT]
-> Support for Basys 3 (Artix7) is not yet upstreamed in nextpnr. Thus we make use of the excellent [openXC7](https://github.com/openxc7) project, which provides a fork of nextpnr called `nextpnr-xilinx`.
+> Support for Basys 3 (Artix7) and Boolean (Spartan 7) is not yet upstreamed in nextpnr. Thus we make use of the excellent [openXC7](https://github.com/openxc7) project, which provides a fork of nextpnr called `nextpnr-xilinx`.
 > However, this also means that the setup is slightly different. Instead of invoking `nix-shell` at the root of this repository, you need to invoke `nix-shell` inside of `nix-opencx7/`.
 
 The make targets for Basys 3 are:
@@ -124,6 +125,14 @@ The make targets for Basys 3 are:
 make synth-basys3
 make pnr-basys3
 make upload-basys3
+```
+
+The make targets for Boolean are:
+
+```
+make synth-boolean
+make pnr-boolean
+make upload-boolean
 ```
 
 

@@ -160,6 +160,39 @@ basys3.frames: basys3.fasm
 basys3.bit: basys3.frames
 	xc7frames2bit --part_file ${PRJXRAY_DB_DIR}/artix7/xc7a35tcpg236-1/part.yaml --part_name xc7a35tcpg236-1 --frm_file $< --output_file $@
 
+
+## RealDigital Boolean
+
+BOOLEAN_SOURCES = $(wildcard fpga/boolean/*.sv) $(wildcard src/*.sv)
+
+synth-boolean: boolean.json
+
+pnr-boolean: boolean.bit
+
+# We abuse the ArtyS7 here as it's similar
+upload-boolean: boolean.bit
+	openFPGALoader --board=arty_s7_50 boolean.bit
+
+boolean.json: $(BOOLEAN_SOURCES)
+	yosys -l $(basename $@)-yosys.log -DSYNTHESIS -DBOOLEAN -p "synth_xilinx -flatten -abc9 ${SYNTH_OPTS} -arch xc7 -top boolean_top; write_json boolean.json" $^
+
+# The chip database only needs to be generated once
+# that is why we don't clean it with make clean
+nix-openxc7/xc7s50csga324.bin:
+	pypy3 ${NEXTPNR_XILINX_PYTHON_DIR}/bbaexport.py --device xc7s50csga324-1 --bba xc7s50csga324.bba
+	bbasm -l xc7s50csga324.bba nix-openxc7/xc7s50csga324.bin
+	rm -f xc7s50csga324.bba
+
+boolean.fasm: boolean.json nix-openxc7/xc7s50csga324.bin fpga/boolean/boolean.xdc
+	nextpnr-xilinx --chipdb nix-openxc7/xc7s50csga324.bin --xdc fpga/boolean/boolean.xdc --json boolean.json --fasm $@ ${PNR_ARGS} ${PNR_DEBUG}
+	
+boolean.frames: boolean.fasm
+	fasm2frames --part xc7s50csga324-1 --db-root ${PRJXRAY_DB_DIR}/spartan7 $< > $@
+
+boolean.bit: boolean.frames
+	xc7frames2bit --part_file ${PRJXRAY_DB_DIR}/spartan7/xc7s50csga324-1/part.yaml --part_name xc7s50csga324-1 --frm_file $< --output_file $@
+
+
 # Common
 
 clean:
@@ -167,4 +200,5 @@ clean:
 	rm -f icebreaker.json icebreaker.asc icebreaker.bit icebreaker-yosys.log
 	rm -f ulx3s.json ulx3s.config ulx3s.bit ulx3s-yosys.log
 	rm -f basys3.json basys3.bin basys3.fasm basys3.frames basys3.bit basys3-yosys.log
+	rm -f boolean.json boolean.bin boolean.fasm boolean.frames boolean.bit boolean-yosys.log
 	rm -f nano9k.json nano9k.bin nano9k.fasm nano9k.frames nano9k.fs nano9k-yosys.log nano9k_pnr.json
