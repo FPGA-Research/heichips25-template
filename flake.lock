@@ -8,11 +8,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1751196116,
-        "narHash": "sha256-y6w1MYMsgfSUPdJoKc+k+4xg0Zi1dUQtv+z71vyCLDU=",
+        "lastModified": 1764091696,
+        "narHash": "sha256-AWbkHL0zO3tD0mE3dZIcj8mVND7o3imTxOpEfOtlRDI=",
         "owner": "fossi-foundation",
         "repo": "ciel",
-        "rev": "1260b5f7d752e457d0bef3b1d9ab7fd044ad9c83",
+        "rev": "afcb23d368614ffa1e7e96584ed33f839c71c576",
         "type": "github"
       },
       "original": {
@@ -30,11 +30,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1741473158,
-        "narHash": "sha256-kWNaq6wQUbUMlPgw8Y+9/9wP0F8SHkjy24/mN3UAppg=",
+        "lastModified": 1764011051,
+        "narHash": "sha256-M7SZyPZiqZUR/EiiBJnmyUbOi5oE/03tCeFrTiUZchI=",
         "owner": "numtide",
         "repo": "devshell",
-        "rev": "7c9e793ebe66bcba8292989a68c0419b737a22a0",
+        "rev": "17ed8d9744ebe70424659b0ef74ad6d41fc87071",
         "type": "github"
       },
       "original": {
@@ -50,33 +50,11 @@
         "rev": "ff81ac966bb2cae68946d5ed5fc4994f96d0ffec",
         "revCount": 69,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/edolstra/flake-compat/1.1.0/01948eb7-9cba-704f-bbf3-3fa956735b52/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/edolstra/flake-compat/1.1.0/01948eb7-9cba-704f-bbf3-3fa956735b52/source.tar.gz?rev=ff81ac966bb2cae68946d5ed5fc4994f96d0ffec&revCount=69"
       },
       "original": {
         "type": "tarball",
         "url": "https://flakehub.com/f/edolstra/flake-compat/1.tar.gz"
-      }
-    },
-    "libparse": {
-      "inputs": {
-        "nixpkgs": [
-          "librelane",
-          "nix-eda",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1713178934,
-        "narHash": "sha256-1w6HBBE2bWAD0GM98O8WZRmZDW9+EzD0KFvnnH2ho/k=",
-        "owner": "efabless",
-        "repo": "libparse-python",
-        "rev": "cec8b6dfd3d1c97bc5ccd1d0a41c44e51bc9c1eb",
-        "type": "github"
-      },
-      "original": {
-        "owner": "efabless",
-        "repo": "libparse-python",
-        "type": "github"
       }
     },
     "librelane": {
@@ -84,15 +62,14 @@
         "ciel": "ciel",
         "devshell": "devshell",
         "flake-compat": "flake-compat",
-        "libparse": "libparse",
         "nix-eda": "nix-eda"
       },
       "locked": {
-        "lastModified": 1754134438,
-        "narHash": "sha256-gEljENT7fYGn3nlC4Ds4K3ZDNJosysJG8ptUy46t36s=",
+        "lastModified": 1770219687,
+        "narHash": "sha256-WG1FFeeimhr+hy3FR/sUa/6wgVlXq9AdscQGEJb11WA=",
         "owner": "librelane",
         "repo": "librelane",
-        "rev": "2a4363cb071df9f449740ce76d37af49705f06d8",
+        "rev": "b1ef9cbd6d756c2bb3fca8b4c7141a9eca84ad57",
         "type": "github"
       },
       "original": {
@@ -107,32 +84,32 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1754134233,
-        "narHash": "sha256-RFApbuRqOG4ybeXg7TjUxtpaCGNAbU/8TqQ96Yxo/R0=",
+        "lastModified": 1768053828,
+        "narHash": "sha256-u45uYnM8W7NXq7hCVwxPuASDZY4tLwLIlk9y9PamvMU=",
         "owner": "fossi-foundation",
         "repo": "nix-eda",
-        "rev": "5908d9dbe2c94486926787dfe33ddfdc21863b60",
+        "rev": "229ea0b01ac497ae4df3441f48533c2249db13df",
         "type": "github"
       },
       "original": {
         "owner": "fossi-foundation",
-        "ref": "5.3.0",
+        "ref": "6.0.1",
         "repo": "nix-eda",
         "type": "github"
       }
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1750400657,
-        "narHash": "sha256-3vkjFnxCOP6vm5Pm13wC/Zy6/VYgei/I/2DWgW4RFeA=",
+        "lastModified": 1766201043,
+        "narHash": "sha256-eplAP+rorKKd0gNjV3rA6+0WMzb1X1i16F5m5pASnjA=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "b2485d56967598da068b5a6946dadda8bfcbcd37",
+        "rev": "b3aad468604d3e488d627c0b43984eb60e75e782",
         "type": "github"
       },
       "original": {
         "owner": "nixos",
-        "ref": "nixos-25.05",
+        "ref": "nixos-25.11",
         "repo": "nixpkgs",
         "type": "github"
       }
