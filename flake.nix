@@ -38,7 +38,7 @@
     devShells = nix-eda.forAllSystems (system: let
       pkgs = (self.legacyPackages.${system});
     in {
-      default = lib.callPackageWith pkgs (librelane.createOpenLaneShell {
+      default = lib.callPackageWith pkgs (pkgs.createLibreLaneShell {
         extra-packages = with pkgs; [
           # Simulation
           iverilog
