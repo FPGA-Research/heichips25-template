@@ -49,7 +49,7 @@ make sim
 
 > [!IMPORTANT]
 > Before you start the gate-level simulation, you need to explicitly enable the PDK so that the testbench can find it.
-> Enable the latest version of the PDK using ciel: `ciel enable --pdk-family ihp-sg13g2 cb7daaa8901016cf7c5d272dfa322c41f024931f`
+> Enable the latest version of the PDK using ciel: `ciel enable --pdk-family ihp-sg13g2 c4b8b4e5e7a05f375cca3815d51b3a37721fbf5c`
 
 Or for gate-level simulation:
 
